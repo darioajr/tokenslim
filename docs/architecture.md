@@ -43,8 +43,7 @@ first size pruning run on writes. Active references can expire with cache prunin
 
 Metrics use one atomic JSON file per invocation, avoiding SQLite and concurrent
 append corruption. They contain sizes, estimated tokens, timing and session ID,
-not output or commands. This is an intentional difference from the specification's
-suggested `stats.db`. Metrics failure does not discard an otherwise safe result.
+not output or commands. Metrics failure does not discard an otherwise safe result.
 Metrics retention is manual in 0.1; disabling metrics avoids future records.
 
 Inputs are bounded (100 MiB configurable, 128 MiB absolute hook JSON cap). CLI

@@ -130,8 +130,7 @@ make install       # install only the binary into ~/.local/bin
 Releases include separate Claude/Codex packages for macOS/Linux and arm64/amd64,
 with checksums. Unit, golden, invariant, and fuzz tests cover the reducers and
 adapters. The demo corpus is synthetic; it does not establish billed-token
-savings, production p95 latency, or acceptance in live agent sessions. The
-original specification is in [.spec/tokenslim-SPEC.md](.spec/tokenslim-SPEC.md).
+savings, production p95 latency, or acceptance in live agent sessions.
 
 ## GitHub Actions
 
