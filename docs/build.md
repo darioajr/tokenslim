@@ -74,8 +74,12 @@ python scenarios/run.py --check
 python scripts/check-hook-command.py
 ```
 
-The hook command check requires Bash on PATH and exercises plugin paths
-containing spaces. The synthetic scenarios generate logs in `scenarios/generated/`
+The hook command check exercises plugin paths containing spaces. On Linux/macOS,
+it uses Bash from PATH. On Windows, it locates Git Bash from the Git installation
+and verifies the shell environment; it does not use the WSL `bash.exe` launcher.
+For a custom installation, set `TOKENSLIM_TEST_BASH` to the absolute path of
+Git Bash's `bash.exe`. CI explicitly passes the path of its current Git Bash
+shell. Failures report the selected shell, exit code, stdout, and stderr. The synthetic scenarios generate logs in `scenarios/generated/`
 and Markdown/JSON results in `scenarios/results/`, testing both safe and smart
 modes and both agent adapters. See the
 [scenario guide](https://github.com/darioajr/tokenslim/blob/main/scenarios/README.md)
