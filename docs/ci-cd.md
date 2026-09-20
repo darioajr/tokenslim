@@ -84,38 +84,12 @@ the tag to exist and does not overwrite an existing release. If a run fails afte
 creating the draft, check its attachments. Remove only the incomplete draft
 before rerunning, or finish the existing draft. Do not move published tags.
 
-## Run locally
+## Local builds and download verification
 
-```sh
-make test          # tests with the race detector
-make lint          # go vet and formatting checks
-make vulncheck     # reachable Go vulnerabilities (govulncheck 1.8.0)
-make demo          # Claude and Codex scenarios
-make workflow-lint # pinned actionlint; first use downloads the Go tool
-make release-check # twelve packages plus content and checksum validation
-```
-
-`make release` writes to `dist/`; it does not publish or upload anything. The
-script checks the version before compiling. `SHA256SUMS` includes only packages
-for the current version; older local archives are excluded. Each archive contains
-the binary, manifest, hook, recovery skill, license, version, documentation, and
-Codex configuration script.
-
-To verify a download:
-
-```sh
-# In the directory containing all twelve archives and SHA256SUMS:
-sha256sum --check SHA256SUMS # Linux
-shasum -a 256 -c SHA256SUMS # macOS
-```
-
-On Windows, run this in PowerShell and compare the result with the matching
-entry in `SHA256SUMS`. Replace VERSION and AGENT with the downloaded values.
-Use `Expand-Archive` to extract the ZIP.
-
-```powershell
-Get-FileHash .\tokenslim-VERSION-AGENT-windows-amd64.zip -Algorithm SHA256
-```
+See [Building and development](build.md) for prerequisites, local tests,
+cross-compilation, and package validation. End users should follow the
+[release installation guide](../README.md#install-from-a-github-release),
+including checksum verification, and download the attached release packages.
 
 ## Maintenance and troubleshooting
 

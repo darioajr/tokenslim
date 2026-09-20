@@ -7,10 +7,10 @@ original output. It does not modify source code, command arguments, or execution
 ## With and without TokenSlim
 
 The following results come from the reproducible synthetic scenarios in
-`make demo` using TokenSlim 0.1.0 in **smart mode**. Without TokenSlim, the
+the [efficiency demo](https://github.com/darioajr/tokenslim/blob/main/scenarios/README.md) using TokenSlim 0.1.0 in **smart mode**. Without TokenSlim, the
 original output is retained; with TokenSlim, eligible output is compressed and
 a recovery marker is included in the measured size. **Safe mode is the default**;
-see the [safe vs. smart comparison](scenarios/README.md#comparison-by-mode) for
+see the [safe vs. smart comparison](https://github.com/darioajr/tokenslim/blob/main/scenarios/README.md#comparison-by-mode) for
 results in both modes.
 
 | Scenario | Without TokenSlim (bytes) | With TokenSlim (bytes) | Byte reduction | Estimated tokens before → after |
@@ -31,35 +31,60 @@ selected diagnostics and execution metadata, plus exact recovery of cached
 originals. Small or non-repeated output remains unchanged. These checks do not
 measure complete conversations, latency improvements, or provider charges.
 
-Reproduce the results with `make demo` (or `python scripts/build.py` followed by
-`python scenarios/run.py --check` on Windows with `PYTHONUTF8=1`). Generated
-measurements are written to `scenarios/results/report.json` and `report.md`.
+For reproduction instructions, see [Building and development](docs/build.md).
 
-## Build and try the demo
+## Install from a GitHub release
 
-Requirements: Go 1.26.8+ and Python 3 for the scenarios.
+Download the ready-to-use package from
+[GitHub Releases](https://github.com/darioajr/tokenslim/releases). You do not need
+Go, Make, or a source checkout to run TokenSlim.
 
-```sh
-make build
-make test
-make demo
+1. Open a published release and expand **Assets**.
+2. Download the package for your agent (`claude` or `codex`), system, and
+   architecture, together with `SHA256SUMS` from the same release.
+3. Compare the archive's SHA-256 with its entry in `SHA256SUMS`, then extract
+   the archive into a permanent directory.
+4. Follow the Claude Code or Codex instructions below using that directory.
+
+Choose an attached `tokenslim-...` package. GitHub's automatic **Source code**
+ZIP and tarball downloads do not include the executable. If no release is
+published yet, ready-to-use packages are not available from this page.
+
+Package names follow this pattern (replace `VERSION` with the release version,
+without the leading `v`):
+
+```text
+tokenslim-VERSION-AGENT-SYSTEM-ARCH.tar.gz  # Linux and macOS
+tokenslim-VERSION-AGENT-windows-ARCH.zip   # Windows
 ```
 
-Binary: `bin/tokenslim`. The demo generates `scenarios/results/report.md` with
-safe/smart comparisons and tests both agents' hook protocols. See the
-[scenario guide](scenarios/README.md).
+`AGENT` is `claude` or `codex`; `SYSTEM` is `linux` or `darwin` (macOS);
+`ARCH` is `amd64` or `arm64`.
+
+### Verify and extract
+
+Linux example, using the Claude Code AMD64 package:
 
 ```sh
-bin/tokenslim benchmark --mode smart --command 'mvn test' build.log
-bin/tokenslim optimize --mode smart --command 'mvn test' build.log
-bin/tokenslim stats
-bin/tokenslim cache inspect ts_HASH
+sha256sum tokenslim-VERSION-claude-linux-amd64.tar.gz
+# Compare with the matching line in SHA256SUMS before extracting.
+mkdir -p tokenslim-claude
+tar -xzf tokenslim-VERSION-claude-linux-amd64.tar.gz -C tokenslim-claude
 ```
 
-Replace `ts_HASH` with the full reference printed in the output. Benchmark is a
-dry run that writes neither cache entries nor metrics. The `optimize` command
-and hooks save the original output. Flags must precede the file name; `-` reads
-stdin. Token counts are local estimates.
+On macOS, use `shasum -a 256` and the corresponding `darwin` archive.
+For Codex, choose the `codex` archive and a separate destination directory.
+
+Windows PowerShell example:
+
+```powershell
+Get-FileHash .\tokenslim-VERSION-claude-windows-amd64.zip -Algorithm SHA256
+# Compare with the matching line in SHA256SUMS before extracting.
+Expand-Archive .\tokenslim-VERSION-claude-windows-amd64.zip .\tokenslim-claude
+```
+
+Each package includes its executable, plugin manifest, hooks, recovery skill,
+and documentation. Keep these files together after extraction.
 
 ## Supported platforms
 
@@ -88,59 +113,84 @@ The standalone CLI can also run directly from PowerShell:
 .\bin\tokenslim.exe stats
 ```
 
-For a source checkout, build and run the scenarios without Make:
-
-```powershell
-$env:PYTHONUTF8 = "1"
-python scripts/build.py
-go test ./...
-python scenarios/run.py --check
-python scripts/codex-hook-config.py > tokenslim-codex-hooks.json
-```
-
-The generated Codex command targets Git Bash and includes the `.exe` suffix on
-Windows. Merge its hook block into your Codex hook configuration and trust it as
-described below. Packaged hooks select the correct executable automatically.
-CI runs native Windows AMD64 tests and package smoke tests; Windows ARM64 is
-cross-compiled and archive-validated, without a native ARM64 execution test.
+Packaged hooks select the Windows executable automatically. WSL uses the Linux
+package and its Linux paths.
 
 ## Claude Code
 
-After running `make build`, start Claude Code from the project root:
+Launch Claude Code from your project directory, pointing it to the extracted
+**Claude Code** package with an absolute path:
 
 ```sh
-claude --plugin-dir .
+claude --plugin-dir "/absolute/path/to/tokenslim-claude"
 ```
 
-The plugin registers a `PostToolUse` hook for Bash. The adapter returns
-`updatedToolOutput`, preserving stdout/stderr and metadata. Read/Edit/Write,
-image outputs, and interrupted executions pass through unchanged. The
-implementation was checked against the documentation and its manifest validated
-with the local Claude Code CLI; protocol tests do not replace an authenticated
-session test.
+On Windows, use the corresponding Windows path:
+
+```powershell
+claude --plugin-dir "C:\Tools\tokenslim-claude"
+```
+
+Keep the package in that location and use the flag when starting a session with
+TokenSlim. The plugin compresses eligible Bash output and keeps the original
+available for recovery. Source reads and edits, image output, and interrupted
+executions remain unchanged.
 
 ## Codex
 
-The dedicated package is in `integrations/codex/tokenslim/`. It includes the
-manifest, hook, skill, and binary produced by `make build`. To try it without
-setting up a marketplace, generate a hook configuration:
+Extract the **Codex** package to a permanent directory. From that directory,
+use the included helper to generate a hook configuration (Python 3 is needed
+only for this helper):
 
 ```sh
-python3 scripts/codex-hook-config.py > /tmp/tokenslim-codex-hooks.json
+python3 scripts/codex-hook-config.py > tokenslim-codex-hooks.json
 ```
 
-Add the generated PostToolUse block to `~/.codex/hooks.json` or
-`<your-project>/.codex/hooks.json`, preserving existing hooks. Open `/hooks` in
-Codex to review and trust the hook. The project must also be trusted. The script
-only prints configuration; it does not change global preferences.
+On Windows:
 
-Codex uses `continue: false` and `stopReason` to replace the result after execution.
-It does not use the Claude response contract or block command execution. Strings
-and completed execution objects are supported; active sessions and unknown
-formats remain unchanged. Code mode and host output limits impose specific
-limitations; see [compatibility](docs/architecture.md). This integration requires
-a version supporting the hooks described in the
-[Codex documentation](https://learn.chatgpt.com/docs/hooks).
+```powershell
+python scripts/codex-hook-config.py > tokenslim-codex-hooks.json
+```
+
+Add the generated `PostToolUse` block to `~/.codex/hooks.json` or
+`<your-project>/.codex/hooks.json`, preserving existing hooks. Open `/hooks` in
+Codex to review and trust the hook. The project must also be trusted. The helper
+only prints configuration; it does not change global preferences. On Windows,
+the generated command targets Git Bash and includes the `.exe` suffix.
+
+This configures output compression through a local hook. The package also
+includes the Codex plugin manifest and recovery skill for plugin installation.
+Use a Codex version supporting the hooks described in the
+[Codex documentation](https://learn.chatgpt.com/docs/hooks). See
+[compatibility details](docs/architecture.md) for supported output formats and
+host limitations.
+
+## Use the included CLI
+
+From the extracted package directory on Linux or macOS:
+
+```sh
+./bin/tokenslim version
+./bin/tokenslim benchmark --mode smart --command 'mvn test' build.log
+./bin/tokenslim optimize --mode smart --command 'mvn test' build.log
+./bin/tokenslim stats
+./bin/tokenslim cache inspect ts_HASH
+```
+
+On Windows, use `.\bin\tokenslim.exe` in place of `./bin/tokenslim`.
+Replace `ts_HASH` with the full reference printed in the output. Benchmark is a
+dry run that writes neither cache entries nor metrics. The `optimize` command
+and hooks save the original output. Flags must precede the file name; `-` reads
+stdin. Token counts are local estimates.
+
+## Update
+
+Download and verify the new release package for the same agent and platform.
+Extract it to a new directory and update the Claude Code `--plugin-dir` path or
+regenerate the Codex hook configuration from the new directory. Review and
+trust changed hooks as required by your agent. Restart the agent before
+removing the previous package directory. Configuration and cached originals
+remain in your TokenSlim state directory.
 
 ## Configuration
 
@@ -171,14 +221,14 @@ and timestamped logs. Terraform remains conservative. See the
 [complete configuration example](docs/config.example.yaml).
 
 ```sh
-bin/tokenslim version
-bin/tokenslim status
-bin/tokenslim config show
-bin/tokenslim config path
-bin/tokenslim stats --session ID
-bin/tokenslim cache inspect ts_HASH --metadata
-bin/tokenslim cache prune
-bin/tokenslim cache clear
+./bin/tokenslim version
+./bin/tokenslim status
+./bin/tokenslim config show
+./bin/tokenslim config path
+./bin/tokenslim stats --session ID
+./bin/tokenslim cache inspect ts_HASH --metadata
+./bin/tokenslim cache prune
+./bin/tokenslim cache clear
 ```
 
 The cache uses zstd and SHA-256, with 0700 directories and 0600 files on Unix.
@@ -190,37 +240,10 @@ atomic local JSON files. There is no telemetry, external service, or model call.
 `TOKENSLIM_DEBUG=1` writes metadata for the latest invocation to
 `~/.tokenslim/logs/tokenslim.log`.
 
-## Development
+## Contributor documentation
 
-```sh
-make lint
-make vulncheck     # scan reachable Go vulnerabilities
-make benchmark
-make plugin-test
-make workflow-lint # validate GitHub Actions workflows
-make release-check # build and verify release packages
-make install       # install only the binary into ~/.local/bin
-```
-
-Releases include separate Claude/Codex packages for macOS/Linux/Windows and arm64/amd64 (64-bit only),
-with checksums. Unit, golden, invariant, and fuzz tests cover the reducers and
-adapters. The demo corpus is synthetic; it does not establish billed-token
-savings, production p95 latency, or acceptance in live agent sessions.
-
-## GitHub Actions
-
-[CI](.github/workflows/ci.yml) runs tests, the race detector, coverage, fuzzing,
-lint, and efficiency scenarios on Linux/macOS/Windows. It also verifies all twelve
-Claude/Codex packages and uploads reports as workflow artifacts.
-
-Tags matching `vMAJOR.MINOR.PATCH` trigger the
-[release workflow](.github/workflows/release.yml). After repeating validation on
-the tagged commit, the pipeline creates a draft GitHub Release with packages and
-checksums. `VERSION` and both plugin manifests must agree.
-
-See [setup, pipeline stages, and publishing](docs/ci-cd.md). Workflows start running
-once the project is pushed to a GitHub repository with Actions enabled.
-
-See [dependency maintenance](docs/dependencies.md) for module versions and update checks.
+- [Building from source, tests, and local packaging](docs/build.md)
+- [GitHub Actions and release publishing](docs/ci-cd.md)
+- [Dependency maintenance](docs/dependencies.md)
 
 Licensed under Apache-2.0.
