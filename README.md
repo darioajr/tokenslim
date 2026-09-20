@@ -1,12 +1,12 @@
 # TokenSlim
 
-Compressor local de saídas de ferramentas para **Claude Code e Codex**. Reduz
-repetições em builds, testes e logs, preserva diagnósticos e guarda o original em
-cache. Não altera código-fonte, argumentos ou execução dos comandos.
+A local tool-output compressor for **Claude Code and Codex**. TokenSlim reduces
+repetition in builds, tests, and logs, preserves diagnostics, and caches the
+original output. It does not modify source code, command arguments, or execution.
 
-## Construir e demonstrar
+## Build and try the demo
 
-Requisitos: Go 1.26.2+; Python 3 para os cenários.
+Requirements: Go 1.26.8+ and Python 3 for the scenarios.
 
 ```sh
 make build
@@ -14,9 +14,9 @@ make test
 make demo
 ```
 
-Binário: `bin/tokenslim`. A demonstração gera
-`scenarios/results/report.md`, com comparações safe/smart, e testa os protocolos
-dos dois agentes. Veja [cenários](scenarios/README.md).
+Binary: `bin/tokenslim`. The demo generates `scenarios/results/report.md` with
+safe/smart comparisons and tests both agents' hook protocols. See the
+[scenario guide](scenarios/README.md).
 
 ```sh
 bin/tokenslim benchmark --mode smart --command 'mvn test' build.log
@@ -25,53 +25,55 @@ bin/tokenslim stats
 bin/tokenslim cache inspect ts_HASH
 ```
 
-Use a referência completa emitida na saída no lugar de `ts_HASH`. O benchmark é
-um dry run sem escrita no cache ou métricas. `optimize` e hooks salvam o original.
-Flags precedem o nome do arquivo; `-` lê stdin. Tokens são estimativas locais.
+Replace `ts_HASH` with the full reference printed in the output. Benchmark is a
+dry run that writes neither cache entries nor metrics. The `optimize` command
+and hooks save the original output. Flags must precede the file name; `-` reads
+stdin. Token counts are local estimates.
 
 ## Claude Code
 
-Após `make build`, na raiz deste projeto:
+After running `make build`, start Claude Code from the project root:
 
 ```sh
 claude --plugin-dir .
 ```
 
-O plugin registra `PostToolUse` para Bash. O adaptador devolve
-`updatedToolOutput` com stdout/stderr e metadados preservados. Read/Edit/Write,
-saídas de imagem e execuções interrompidas passam sem alteração. A implementação
-foi validada contra a documentação atual e o manifesto foi validado pelo Claude
-Code local; o teste de protocolo não substitui uma sessão autenticada.
+The plugin registers a `PostToolUse` hook for Bash. The adapter returns
+`updatedToolOutput`, preserving stdout/stderr and metadata. Read/Edit/Write,
+image outputs, and interrupted executions pass through unchanged. The
+implementation was checked against the documentation and its manifest validated
+with the local Claude Code CLI; protocol tests do not replace an authenticated
+session test.
 
 ## Codex
 
-O pacote próprio está em `integrations/codex/tokenslim/`, incluindo manifesto,
-hook, skill e binário produzido por `make build`. Para experimentar sem configurar
-um marketplace, gere um arquivo de hook que pode ser adicionado à configuração do
-Codex:
+The dedicated package is in `integrations/codex/tokenslim/`. It includes the
+manifest, hook, skill, and binary produced by `make build`. To try it without
+setting up a marketplace, generate a hook configuration:
 
 ```sh
 python3 scripts/codex-hook-config.py > /tmp/tokenslim-codex-hooks.json
 ```
 
-Adicione o bloco PostToolUse gerado ao `~/.codex/hooks.json` ou
-`<seu-projeto>/.codex/hooks.json`, preservando os hooks existentes. Abra `/hooks`
-no Codex e revise/confie no hook. O projeto também precisa ser confiável. O script
-apenas imprime a configuração; não modifica preferências globais.
+Add the generated PostToolUse block to `~/.codex/hooks.json` or
+`<your-project>/.codex/hooks.json`, preserving existing hooks. Open `/hooks` in
+Codex to review and trust the hook. The project must also be trusted. The script
+only prints configuration; it does not change global preferences.
 
-Codex usa `continue: false` e `stopReason` para substituir o resultado após a
-execução. Não usa o contrato de Claude nem bloqueia a execução do comando.
-Strings e objetos de execuções concluídas são suportados; sessões ainda em
-execução e formatos desconhecidos ficam intactos. Há limitações específicas de
-code mode e limites de saída do próprio host; consulte a
-[compatibilidade](docs/architecture.md). A integração requer uma versão com os
-hooks descritos na [documentação do Codex](https://learn.chatgpt.com/docs/hooks).
+Codex uses `continue: false` and `stopReason` to replace the result after execution.
+It does not use the Claude response contract or block command execution. Strings
+and completed execution objects are supported; active sessions and unknown
+formats remain unchanged. Code mode and host output limits impose specific
+limitations; see [compatibility](docs/architecture.md). This integration requires
+a version supporting the hooks described in the
+[Codex documentation](https://learn.chatgpt.com/docs/hooks).
 
-## Configuração
+## Configuration
 
-Precedência: flags CLI → `.tokenslim.yaml` do diretório de trabalho →
-`~/.tokenslim/config.yaml` → defaults. `TOKENSLIM_HOME` muda o diretório de estado
-para testes ou isolamento. A configuração do projeto não é procurada em ancestrais.
+Precedence: CLI flags → `.tokenslim.yaml` in the working directory →
+`~/.tokenslim/config.yaml` → defaults. `TOKENSLIM_HOME` overrides the state
+directory for testing or isolation. Project configuration is not searched for
+in ancestor directories.
 
 ```yaml
 version: 1
@@ -88,10 +90,11 @@ metrics:
   enabled: true
 ```
 
-Os dois limiares de tamanho precisam ser atingidos. Saídas sem ganho suficiente
-permanecem intactas. Modo smart acrescenta redução de transferências Maven,
-suítes PASS e logs com timestamps. Terraform continua conservador. Veja
-[regras](docs/compression-rules.md) e [configuração completa](docs/config.example.yaml).
+Both size thresholds must be met. Output without sufficient savings remains
+unchanged. Smart mode also reduces Maven transfer messages, PASS suite records,
+and timestamped logs. Terraform remains conservative. See the
+[compression rules](docs/compression-rules.md) and
+[complete configuration example](docs/config.example.yaml).
 
 ```sh
 bin/tokenslim version
@@ -104,41 +107,46 @@ bin/tokenslim cache prune
 bin/tokenslim cache clear
 ```
 
-Cache: zstd + SHA-256, diretórios 0700 e arquivos 0600. Os originais podem conter
-segredos que já estavam nos logs; permanecem locais. Limpar ou expirar o cache
-remove a possibilidade de recuperação. Se o cache falhar ou estiver desabilitado,
-a saída original é mantida. Métricas são arquivos JSON atômicos locais; não há
-telemetria, serviço externo ou chamadas a modelos. `TOKENSLIM_DEBUG=1` grava os
-metadados da última execução em `~/.tokenslim/logs/tokenslim.log`.
+The cache uses zstd and SHA-256, with 0700 directories and 0600 files. Originals
+may contain secrets already present in logs; they remain local. Clearing or
+expiring the cache removes the ability to recover those originals. If the cache
+fails or is disabled, the original output is retained. Metrics are stored as
+atomic local JSON files. There is no telemetry, external service, or model call.
+`TOKENSLIM_DEBUG=1` writes metadata for the latest invocation to
+`~/.tokenslim/logs/tokenslim.log`.
 
-## Desenvolvimento
+## Development
 
 ```sh
 make lint
+make vulncheck     # scan reachable Go vulnerabilities
 make benchmark
 make plugin-test
-make workflow-lint # valida os workflows GitHub Actions
-make release-check # gera e verifica os pacotes
-make install # instala apenas o binário em ~/.local/bin
+make workflow-lint # validate GitHub Actions workflows
+make release-check # build and verify release packages
+make install       # install only the binary into ~/.local/bin
 ```
 
-Releases incluem pacotes distintos para Claude/Codex, macOS/Linux e arm64/amd64,
-com checksums. Unitários, goldens, testes de invariantes e fuzzing cobrem os
-redutores e adapters. O corpus de demonstração é sintético; economia de tokens
-faturados, latência p95 em produção e aceitação em sessões reais não são afirmadas.
-A especificação original está em [.spec/tokenslim-SPEC.md](.spec/tokenslim-SPEC.md).
+Releases include separate Claude/Codex packages for macOS/Linux and arm64/amd64,
+with checksums. Unit, golden, invariant, and fuzz tests cover the reducers and
+adapters. The demo corpus is synthetic; it does not establish billed-token
+savings, production p95 latency, or acceptance in live agent sessions. The
+original specification is in [.spec/tokenslim-SPEC.md](.spec/tokenslim-SPEC.md).
 
 ## GitHub Actions
 
-A [CI](.github/workflows/ci.yml) executa testes, race detector, cobertura, fuzzing,
-lint e cenários de eficiência em Linux/macOS. Também verifica os oito pacotes
-Claude/Codex e publica os relatórios como artifacts da execução.
+[CI](.github/workflows/ci.yml) runs tests, the race detector, coverage, fuzzing,
+lint, and efficiency scenarios on Linux/macOS. It also verifies all eight
+Claude/Codex packages and uploads reports as workflow artifacts.
 
-Tags `vMAJOR.MINOR.PATCH` acionam a [release](.github/workflows/release.yml): após
-repetir as validações no commit da tag, o pipeline cria um rascunho de GitHub
-Release com os pacotes e checksums. `VERSION` e os dois manifestos devem coincidir.
+Tags matching `vMAJOR.MINOR.PATCH` trigger the
+[release workflow](.github/workflows/release.yml). After repeating validation on
+the tagged commit, the pipeline creates a draft GitHub Release with packages and
+checksums. `VERSION` and both plugin manifests must agree.
 
-Veja [ativação, etapas e publicação](docs/ci-cd.md). Os workflows passam a executar
-quando o projeto for enviado a um repositório GitHub com Actions habilitado.
+See [setup, pipeline stages, and publishing](docs/ci-cd.md). Workflows start running
+once the project is pushed to a GitHub repository with Actions enabled.
 
-Licença Apache-2.0.
+See [dependency maintenance](docs/dependencies.md) for module versions and update checks.
+
+Licensed under Apache-2.0.

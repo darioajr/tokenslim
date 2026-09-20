@@ -126,21 +126,21 @@ def main():
         assert stats['Total']['Changed'] > 0
         assert run(['hook', 'post-tool-use'], '{invalid', env) == ''
     # Timing is measured separately and is intentionally not deterministic.
-    report = ['# TokenSlim — demonstração local', '',
-              'Corpus sintético; não representa economia real de faturamento. Tokens estimados por caracteres/4.',
-              'Cada caso passou pelos adaptadores Claude Code e Codex, sem chamadas a modelos.', '',
-              '| Cenário | Modo | Original B | Otimizado B | Economia | Tokens estimados antes → depois |',
+    report = ['# TokenSlim — local demo', '',
+              'Synthetic corpus; does not represent actual billing savings. Tokens estimated as characters/4.',
+              'Each case passed through the Claude Code and Codex adapters without model calls.', '',
+              '| Scenario | Mode | Original B | Optimized B | Savings | Estimated tokens before → after |',
               '|---|---|---:|---:|---:|---:|']
     for r in rows:
         reduction = 100*(1-r['optimized_bytes']/r['original_bytes'])
         report.append(f"| {r['scenario']} | {r['mode']} | {r['original_bytes']} | {r['optimized_bytes']} | {reduction:.1f}% | {r['estimated_original_tokens']} → {r['estimated_optimized_tokens']} |")
-    report += ['', 'Validações: diagnósticos preservados; originais recuperados; saída determinística;',
-               'metadados de execução preservados; Read ignorado; JSON inválido tolerado; fonte intacta.',
-               'Os resultados validam o protocolo dos hooks. Uma sessão real depende da instalação e confiança no agente.', '']
+    report += ['', 'Checks: diagnostics preserved; originals recovered; deterministic output;',
+               'execution metadata preserved; Read ignored; invalid JSON tolerated; source unchanged.',
+               'These results validate the hook protocol. A live session requires installation and hook trust in the host agent.', '']
     (results/'report.md').write_text('\n'.join(report))
     (results/'report.json').write_text(json.dumps(rows, indent=2)+'\n')
     print('\n'.join(report))
-    print(f'Relatório: {results / "report.md"}')
+    print(f'Report: {results / "report.md"}')
 
 
 if __name__ == '__main__':

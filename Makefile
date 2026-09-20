@@ -1,4 +1,4 @@
-.PHONY: build test benchmark lint install plugin-test demo release release-check workflow-lint
+.PHONY: build test benchmark lint install plugin-test demo release release-check workflow-lint vulncheck
 PREFIX ?= $(HOME)/.local
 VERSION ?= $(shell cat VERSION)
 build:
@@ -26,4 +26,7 @@ release:
 release-check: release
 	python3 scripts/validate-release.py --packages
 workflow-lint:
-	go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 -shellcheck= .github/workflows/*.yml
+	go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 -shellcheck= .github/workflows/*.yml
+
+vulncheck:
+	go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...

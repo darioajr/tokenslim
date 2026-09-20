@@ -1,124 +1,158 @@
-# CI e releases no GitHub Actions
+# CI and releases with GitHub Actions
 
-O projeto inclui dois workflows: [CI](../.github/workflows/ci.yml) e
-[Release](../.github/workflows/release.yml). Eles usam Go conforme `go.mod`, Python
-3.12 e runners hospedados pelo GitHub. Não precisam de contas dos agentes, API
-keys, Docker ou Kubernetes: os cenários usam logs sintéticos e os binários reais.
+The project includes two workflows: [CI](../.github/workflows/ci.yml) and
+[Release](../.github/workflows/release.yml). They use the Go version declared in
+`go.mod`, Python 3.12, and GitHub-hosted runners. No agent accounts, API keys,
+Docker, or Kubernetes are required: scenarios use synthetic logs and actual binaries.
 
-## Fluxo de validação
+## Validation pipeline
 
-A CI roda em pushes de branches, pull requests e execução manual (`workflow_dispatch`).
-Também pode ser chamada pelo workflow de release (`workflow_call`).
+CI runs on branch pushes, pull requests, and manual dispatch (`workflow_dispatch`).
+The release workflow can also call it through `workflow_call`.
 
-| Job | O que verifica | Resultado |
+| Job | Checks | Output |
 |---|---|---|
-| Test (ubuntu-latest) | Dependências, versões/manifests, go vet, gofmt, testes com race detector, cobertura e cenários dos dois agentes | `test-results-ubuntu-latest` |
-| Test (macos-latest) | Mesmas verificações no macOS | `test-results-macos-latest` |
-| Fuzz | Entradas aleatórias por 20 segundos em cada alvo: compressor e hook | Corpus anexado em caso de falha |
-| Workflow lint | Sintaxe e expressões dos workflows com actionlint 1.7.7 | Falha se o workflow for inválido |
-| Packages | Após os demais jobs: cross-compilation, conteúdo dos oito arquivos, checksums e execução dos dois binários Linux amd64 | `release-packages` |
+| Test (ubuntu-latest) | Dependencies, versions/manifests, go vet, gofmt, race detection, coverage, vulnerability scanning, and scenarios for both agents | `test-results-ubuntu-latest` |
+| Test (macos-latest) | The same checks on macOS, except the Linux-only vulnerability scan | `test-results-macos-latest` |
+| Fuzz | 100,000 fuzz executions per target: compressor and hook | Corpus attached on failure |
+| Workflow lint | Workflow syntax and expressions using actionlint 1.7.12 | Fails if a workflow is invalid |
+| Packages | After the other jobs: cross-compilation, contents of all eight archives, checksums, and execution of both Linux amd64 binaries | `release-packages` |
 
-Os testes e relatórios são retidos por 14 dias. O resumo de cada job de teste
-mostra a tabela de economia de bytes; os artifacts incluem o relatório JSON,
-saídas dos cenários, respostas dos hooks e `coverage.out`. A cobertura é informativa,
-sem limiar arbitrário. Os benchmarks de latência são locais (`make benchmark`);
-não existe um limite de tempo de performance em runners compartilhados.
+Test artifacts and reports are retained for 14 days. Each test job summary shows
+the byte-savings table. Artifacts include the JSON report, scenario outputs, hook
+responses, and `coverage.out`. Coverage is informational, without an arbitrary
+minimum threshold. Fuzzing uses an execution-count budget instead of a short
+wall-clock deadline; each target still has a three-minute test timeout to catch
+hangs on shared runners. Latency benchmarks run locally with `make benchmark`; there
+is no performance threshold on shared runners.
 
-Os pacotes cobrem Claude Code e Codex × Linux/macOS × amd64/arm64. A compilação
-cruzada não executa os binários de todas as arquiteturas; o smoke test executa
-apenas Linux amd64, enquanto a suíte Go também roda no macOS.
+Packages cover Claude Code and Codex × Linux/macOS × amd64/arm64. Cross-compilation
+does not execute binaries for every architecture. The smoke test runs Linux amd64
+binaries only; the Go test suite also runs on macOS.
 
-## Como ativar no repositório
+## Enable the workflows in your repository
 
-1. Versione e envie o projeto, incluindo `.github/`, para seu repositório GitHub.
-2. Em **Settings → Actions → General**, permita GitHub Actions e as actions
-   oficiais `actions/*`. Se a organização restringe permissões de escrita, permita
-   `contents: write` para o job de release. As permissões dos demais jobs são de leitura.
-3. Em **Actions → CI → Run workflow**, execute a primeira validação. A execução
-   manual fica disponível quando o workflow estiver na branch padrão.
-4. Opcionalmente configure um ruleset da branch padrão exigindo os checks
-   `Test (ubuntu-latest)`, `Test (macos-latest)`, `Fuzz`, `Workflow lint` e `Packages`.
-   Selecione os nomes exibidos pelo GitHub após a primeira execução.
+1. Commit and push the project, including `.github/`, to your GitHub repository.
+2. Under **Settings → Actions → General**, allow GitHub Actions and the official
+   `actions/*` actions. If your organization restricts write permissions, allow
+   `contents: write` for the release publishing job. Other jobs use read permissions.
+3. Under **Actions → CI → Run workflow**, run the initial validation. Manual
+   dispatch becomes available once the workflow is on the default branch.
+4. Optionally configure a default-branch ruleset requiring `Test (ubuntu-latest)`,
+   `Test (macos-latest)`, `Fuzz`, `Workflow lint`, and `Packages`. Select the check
+   names shown by GitHub after the first run.
 
-Não é necessário cadastrar PAT ou secrets: o job de release usa o `GITHUB_TOKEN`
-automático. Hooks dos agentes não são instalados ou autorizados pelos workflows.
-O pipeline valida o contrato local, não uma conversa autenticada com Claude/Codex.
+No PAT or manually configured secret is needed: publishing uses the automatic
+`GITHUB_TOKEN`. Workflows do not install or trust agent hooks. The pipeline
+validates the local contract, not an authenticated Claude/Codex conversation.
 
-## Criar uma release
+## Create a release
 
-A fonte da versão é [VERSION](../VERSION). Antes de uma release, atualize também
-os campos `version` dos dois manifestos:
+[VERSION](../VERSION) is the version source. Before releasing, also update the
+`version` fields in both manifests:
 
 - `.claude-plugin/plugin.json`
 - `integrations/codex/tokenslim/.codex-plugin/plugin.json`
 
-O build injeta essa versão no binário via linker. São aceitas versões estáveis
-`MAJOR.MINOR.PATCH`; prereleases ainda não fazem parte deste pipeline. A tag deve
-ser exatamente `v` + o conteúdo de `VERSION`.
+The build injects this version into the binary through the linker. Only stable
+`MAJOR.MINOR.PATCH` versions are accepted; prereleases are not supported by this
+pipeline yet. The tag must be exactly `v` followed by the contents of `VERSION`.
 
 ```sh
 python3 scripts/validate-release.py
 make test lint demo workflow-lint release-check
-# Depois de commitar e enviar as alterações para o remoto:
+# After committing and pushing the changes to the remote:
 version=$(cat VERSION)
 git tag -a "v$version" -m "TokenSlim $version"
 git push origin "v$version"
 ```
 
-O push da tag inicia o workflow Release, que:
+Pushing the tag starts the Release workflow, which:
 
-1. Confere tag, VERSION, manifestos e seleção dos adaptadores.
-2. Executa a CI completa no mesmo commit da tag.
-3. Baixa os pacotes produzidos por essa execução e confere SHA-256 novamente.
-4. Cria uma **GitHub Release em rascunho**, com notas geradas, os oito pacotes e
-   `SHA256SUMS`. Revise em **Releases** e publique quando estiver pronto.
+1. Checks the tag, VERSION, manifests, and adapter selection.
+2. Runs the complete CI pipeline on the tagged commit.
+3. Downloads the packages produced by that run and verifies SHA-256 again.
+4. Creates a **draft GitHub Release** with generated notes, all eight packages,
+   and `SHA256SUMS`. Review it under **Releases** and publish when ready.
 
-Somente o job final tem `contents: write`. O comando `gh release create` exige a
-existência da tag e não sobrescreve uma release existente. Se uma execução falhar
-após criar o rascunho, confira os anexos; remova somente o rascunho incompleto antes
-de repetir a execução, ou conclua o rascunho existente. Não mova tags já publicadas.
+Only the final job has `contents: write`. The `gh release create` command requires
+the tag to exist and does not overwrite an existing release. If a run fails after
+creating the draft, check its attachments. Remove only the incomplete draft
+before rerunning, or finish the existing draft. Do not move published tags.
 
-## Executar localmente
-
-```sh
-make test           # testes com race detector
-make lint           # go vet e formatação
-make demo           # cenários Claude e Codex
-make workflow-lint  # actionlint fixado; primeiro uso baixa a ferramenta Go
-make release-check # oito pacotes + validação de conteúdo e hashes
-```
-
-`make release` escreve em `dist/`; não publica nem faz upload. O script valida a
-versão antes de compilar. `SHA256SUMS` inclui apenas os pacotes da versão atual;
-arquivos de versões anteriores no diretório local não entram nos hashes.
-Os arquivos contêm binário, manifesto, hook, skill de recuperação, licença,
-versão, documentação e script de configuração do Codex.
-
-Verificação de um download:
+## Run locally
 
 ```sh
-# No diretório com os oito arquivos e SHA256SUMS:
-sha256sum --check SHA256SUMS  # Linux
-shasum -a 256 -c SHA256SUMS  # macOS
+make test          # tests with the race detector
+make lint          # go vet and formatting checks
+make vulncheck     # reachable Go vulnerabilities (govulncheck 1.8.0)
+make demo          # Claude and Codex scenarios
+make workflow-lint # pinned actionlint; first use downloads the Go tool
+make release-check # eight packages plus content and checksum validation
 ```
 
-## Manutenção e falhas comuns
+`make release` writes to `dist/`; it does not publish or upload anything. The
+script checks the version before compiling. `SHA256SUMS` includes only packages
+for the current version; older local archives are excluded. Each archive contains
+the binary, manifest, hook, recovery skill, license, version, documentation, and
+Codex configuration script.
 
-- **Tag divergente:** atualize VERSION e ambos os manifestos no commit correto.
-- **Formatação:** rode `gofmt -w cmd internal` e revise as alterações.
-- **Erro de cenário:** consulte os artifacts `test-results-*`; saídas originais
-  podem ser reproduzidas executando `make demo` localmente.
-- **Erro de fuzzing:** baixe o corpus anexado, copie o caso para o diretório do
-  pacote correspondente e rode `go test` para reproduzir.
-- **Release sem permissão:** confira a política de Actions da organização e as
-  permissões de `GITHUB_TOKEN` do job `publish`.
-- **Actions ou Go indisponíveis:** confira o log de setup e a disponibilidade da
-  versão declarada em `go.mod` antes de mudar o compilador.
+To verify a download:
 
-Actions estão fixadas por SHA. O [Dependabot](../.github/dependabot.yml) propõe
-atualizações semanais das actions e dependências Go. O actionlint está fixado no
-Makefile e deve ser atualizado explicitamente. A análise ShellCheck do actionlint
-está desabilitada para manter o mesmo comando local/CI sem dependência adicional.
+```sh
+# In the directory containing all eight archives and SHA256SUMS:
+sha256sum --check SHA256SUMS # Linux
+shasum -a 256 -c SHA256SUMS # macOS
+```
 
-Referências oficiais: [workflows reutilizáveis](https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows)
-e [permissões de GITHUB_TOKEN](https://docs.github.com/en/actions/tutorials/authenticate-with-github_token).
+## Maintenance and troubleshooting
+
+- **Tag mismatch:** update VERSION and both manifests in the correct commit.
+- **Formatting:** run `gofmt -w cmd internal` and review the changes.
+- **Scenario failure:** inspect the `test-results-*` artifacts. Reproduce original
+  outputs by running `make demo` locally.
+- **Fuzzing failure:** download the attached corpus, copy the failing case into
+  the corresponding package directory, and run `go test` to reproduce it.
+- **Release permission failure:** check your organization's Actions policy and
+  the `publish` job's `GITHUB_TOKEN` permissions.
+- **Actions or Go unavailable:** inspect the setup log and the availability of
+  the version declared in `go.mod` before changing the compiler.
+
+Actions are pinned by SHA. [Dependabot](../.github/dependabot.yml) proposes weekly
+updates to actions and Go dependencies. GitHub Actions version updates are grouped
+into one PR so related upload/download upgrades can be reviewed together. Grouping controls future update PRs; it does not authorize automatic merges. The actionlint version is pinned in the
+Makefile and must be updated explicitly. ShellCheck integration is disabled so
+the same actionlint command runs locally and in CI without an extra dependency.
+
+Official references: [reusable workflows](https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows)
+and [GITHUB_TOKEN permissions](https://docs.github.com/en/actions/tutorials/authenticate-with-github_token).
+
+
+## Action versions and runner compatibility
+
+The workflows use these commit-pinned versions:
+
+| Action | Version |
+|---|---|
+| `actions/checkout` | 7.0.1 |
+| `actions/setup-go` | 7.0.0 |
+| `actions/setup-python` | 7.0.0 |
+| `actions/upload-artifact` | 7.0.1 |
+| `actions/download-artifact` | 8.0.1 |
+
+These actions use Node.js 24 internally. This does not change the Go or Python
+versions selected for the project. The pipeline uses GitHub-hosted runners; if
+you switch to self-hosted runners, verify each action's runner requirements first.
+See the [setup-go compatibility notes](https://github.com/actions/setup-go/tree/v7.0.0)
+and [checkout compatibility notes](https://github.com/actions/checkout/tree/v7.0.1).
+
+Artifact uploads retain the default ZIP archive behavior, which supports the
+multi-file reports and release bundle. The release download extracts that bundle
+and fails on digest mismatches by default; the separate SHA-256 check of the
+release files also remains enabled. See the
+[upload inputs](https://github.com/actions/upload-artifact/tree/v7.0.1) and
+[download inputs](https://github.com/actions/download-artifact/tree/v8.0.1).
+
+Dependabot version-update PRs and security alerts are separate features. The
+configuration file schedules version updates; it does not enable security alerts
+in the repository settings.
