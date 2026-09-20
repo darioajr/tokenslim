@@ -11,10 +11,14 @@ import (
 // rename without removing the destination, so a failed write retains the cache.
 // A bounded wait also leaves permanent permission errors visible to the caller.
 func replaceFile(source, destination string) error {
+	return retrySharing(func() error { return os.Rename(source, destination) })
+}
+
+func retrySharing(operation func() error) error {
 	deadline := time.Now().Add(2 * time.Second)
 	delay := 5 * time.Millisecond
 	for {
-		err := os.Rename(source, destination)
+		err := operation()
 		const sharingViolation syscall.Errno = 32
 		if !errors.Is(err, syscall.ERROR_ACCESS_DENIED) && !errors.Is(err, sharingViolation) {
 			return err

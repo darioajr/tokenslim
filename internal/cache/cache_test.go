@@ -48,8 +48,8 @@ func TestConcurrent(t *testing.T) {
 				t.Error(e)
 				return
 			}
-			if _, _, e = s.Get(ref); e != nil {
-				t.Error(e)
+			if data, record, err := s.Get(ref); err != nil || string(data) != "same output" || record.ID != ref {
+				t.Errorf("concurrent recovery: %q, %s, %v", data, record.ID, err)
 			}
 		}()
 	}

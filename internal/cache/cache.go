@@ -119,7 +119,7 @@ func (s Store) Get(ref string) ([]byte, Record, error) {
 	if !info.Mode().IsRegular() {
 		return nil, r, fmt.Errorf("not a regular cache file")
 	}
-	f, e := os.Open(p)
+	f, e := openCacheFile(p)
 	if e != nil {
 		return nil, r, e
 	}
@@ -143,7 +143,7 @@ func (s Store) Get(ref string) ([]byte, Record, error) {
 	if Ref(b) != ref {
 		return nil, r, fmt.Errorf("cache integrity mismatch")
 	}
-	meta, e := os.ReadFile(filepath.Join(s.Dir, ref+".json"))
+	meta, e := readCacheFile(filepath.Join(s.Dir, ref+".json"))
 	if e != nil {
 		return nil, r, e
 	}
