@@ -4,6 +4,37 @@ A local tool-output compressor for **Claude Code and Codex**. TokenSlim reduces
 repetition in builds, tests, and logs, preserves diagnostics, and caches the
 original output. It does not modify source code, command arguments, or execution.
 
+## With and without TokenSlim
+
+The following results come from the reproducible synthetic scenarios in
+`make demo` using TokenSlim 0.1.0 in **smart mode**. Without TokenSlim, the
+original output is retained; with TokenSlim, eligible output is compressed and
+a recovery marker is included in the measured size. **Safe mode is the default**;
+see the [safe vs. smart comparison](scenarios/README.md#comparison-by-mode) for
+results in both modes.
+
+| Scenario | Without TokenSlim (bytes) | With TokenSlim (bytes) | Byte reduction | Estimated tokens before → after |
+|---|---:|---:|---:|---:|
+| Maven build | 66,314 | 7,348 | 88.9% | 16,579 → 1,837 |
+| Node tests | 29,714 | 6,932 | 76.7% | 7,429 → 1,733 |
+| Kubernetes logs | 48,314 | 11,308 | 76.6% | 12,079 → 2,827 |
+| Docker logs | 45,434 | 11,064 | 75.6% | 11,359 → 2,766 |
+| Repeated worker logs | 47,594 | 9,140 | 80.8% | 11,899 → 2,285 |
+| Small output | 6 | 6 | 0.0% | 2 → 2 |
+| Unicode / ANSI logs | 24,099 | 4,155 | 82.8% | 5,425 → 964 |
+| Non-repeated output | 6,290 | 6,290 | 0.0% | 1,573 → 1,573 |
+
+These are synthetic log measurements, not production benchmarks or billing
+savings. Token estimates use Unicode characters divided by four, rounded up;
+actual model tokenization varies. Both adapters are checked for preservation of
+selected diagnostics and execution metadata, plus exact recovery of cached
+originals. Small or non-repeated output remains unchanged. These checks do not
+measure complete conversations, latency improvements, or provider charges.
+
+Reproduce the results with `make demo` (or `python scripts/build.py` followed by
+`python scenarios/run.py --check` on Windows with `PYTHONUTF8=1`). Generated
+measurements are written to `scenarios/results/report.json` and `report.md`.
+
 ## Build and try the demo
 
 Requirements: Go 1.26.8+ and Python 3 for the scenarios.

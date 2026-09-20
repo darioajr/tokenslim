@@ -25,6 +25,29 @@ recovery, determinism, unchanged Read output, and untouched source files. The de
 cache uses an isolated temporary directory that is removed when the run finishes.
 Reports remain available in `results/`.
 
+## Comparison by mode
+
+TokenSlim 0.1.0 snapshot from `results/report.json`. All sizes are bytes and
+include the recovery marker when output changes. Safe mode is the default.
+
+| Scenario | Without TokenSlim | With TokenSlim: safe | Safe reduction | With TokenSlim: smart | Smart reduction |
+|---|---:|---:|---:|---:|---:|
+| Maven build | 66,314 | 10,699 | 83.9% | 7,348 | 88.9% |
+| Node tests | 29,714 | 29,714 | 0.0% | 6,932 | 76.7% |
+| Kubernetes logs | 48,314 | 48,314 | 0.0% | 11,308 | 76.6% |
+| Docker logs | 45,434 | 45,434 | 0.0% | 11,064 | 75.6% |
+| Repeated worker logs | 47,594 | 9,140 | 80.8% | 9,140 | 80.8% |
+| Unicode / ANSI logs | 24,099 | 4,155 | 82.8% | 4,155 | 82.8% |
+| Small output | 6 | 6 | 0.0% | 6 | 0.0% |
+| Non-repeated output | 6,290 | 6,290 | 0.0% | 6,290 | 0.0% |
+
+Safe mode groups exact repetition. Smart mode also recognizes supported log
+patterns, which explains the additional reductions in Node, Kubernetes, and
+Docker scenarios. Zero reduction is expected when no eligible compression is
+found. These synthetic results do not predict savings for every workload.
+
+Regenerate the report with the commands above before updating this snapshot.
+
 To compare your own log:
 
 ```sh
