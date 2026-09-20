@@ -111,6 +111,7 @@ jobs:
           python -m unittest discover -s scripts -p 'test_*.py'
           go vet ./...
           go test -race -coverprofile=coverage.out -covermode=atomic ./...
+          go test -race ./internal/cache -run TestConcurrent -count=20
           python scripts/build.py
           python scenarios/run.py --check
           python scripts/check-hook-command.py

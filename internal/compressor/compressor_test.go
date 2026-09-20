@@ -23,6 +23,11 @@ func TestGolden(t *testing.T) {
 			if got != string(want) {
 				t.Fatalf("got %q\nwant %q", got, want)
 			}
+			// Exercise Windows input line endings while keeping the golden output exact.
+			crlf := strings.ReplaceAll(string(a), "\n", "\r\n")
+			if actual := (Reducer{c.kind}).Compress(Context{Mode: c.mode, GroupTimestamps: true}, crlf).Output; actual != string(want) {
+				t.Fatalf("CRLF input: got %q, want %q", actual, want)
+			}
 			if !Intact(string(a), got) {
 				t.Fatal("critical loss")
 			}

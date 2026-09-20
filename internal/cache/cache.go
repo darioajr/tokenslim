@@ -70,7 +70,7 @@ func Atomic(path string, data []byte) error {
 	if e = f.Close(); e != nil {
 		return e
 	}
-	return os.Rename(tmp, path)
+	return replaceFile(tmp, path)
 }
 func (s Store) Put(b []byte, r Record) (string, error) {
 	if s.MaxBytes > 0 && int64(len(b)) > s.MaxBytes {

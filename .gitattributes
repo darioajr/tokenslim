@@ -1,0 +1,2 @@
+# Keep fixtures and shell scripts identical across Windows, Linux, and macOS.
+* text=auto eol=lf
