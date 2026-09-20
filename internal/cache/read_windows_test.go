@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func TestCacheReaderAllowsReplacement(t *testing.T) {
+func TestCacheReplacementCompletesAfterReaderCloses(t *testing.T) {
 	for _, extension := range []string{".zst", ".json"} {
 		t.Run(extension, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "entry"+extension)
@@ -21,14 +21,19 @@ func TestCacheReaderAllowsReplacement(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer reader.Close()
-			// No release of the reader: replacement must work while it is open.
-			if err := Atomic(path, []byte("new")); err != nil {
-				t.Fatal(err)
+			// Replacement can remain blocked until the reader closes, even with
+			// FILE_SHARE_DELETE. Exercise the real bounded-retry contract.
+			done := make(chan error, 1)
+			go func() { done <- Atomic(path, []byte("new")) }()
+			time.Sleep(100 * time.Millisecond)
+			old, readErr := io.ReadAll(reader)
+			closeErr := reader.Close()
+			replaceErr := <-done
+			if readErr != nil || string(old) != "old" {
+				t.Fatalf("reader snapshot: %q, %v", old, readErr)
 			}
-			old, err := io.ReadAll(reader)
-			if err != nil || string(old) != "old" {
-				t.Fatalf("reader snapshot: %q, %v", old, err)
+			if closeErr != nil || replaceErr != nil {
+				t.Fatalf("close: %v; replacement: %v", closeErr, replaceErr)
 			}
 			current, err := readCacheFile(path)
 			if err != nil || string(current) != "new" {

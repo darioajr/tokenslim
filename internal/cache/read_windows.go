@@ -13,9 +13,9 @@ func openCacheFile(path string) (*os.File, error) {
 	var handle syscall.Handle
 	err = retrySharing(func() error {
 		var openErr error
-		// Readers must share DELETE access as well as READ/WRITE so another
-		// hook process can replace the entry while this handle reads the old
-		// contents. See CreateFileW's dwShareMode contract.
+		// Allow compatible READ/WRITE/DELETE handles from other processes.
+		// This does not guarantee replacement of an open destination:
+		// replaceFile may still need to wait until readers close.
 		handle, openErr = syscall.CreateFile(name, syscall.GENERIC_READ,
 			syscall.FILE_SHARE_READ|syscall.FILE_SHARE_WRITE|syscall.FILE_SHARE_DELETE,
 			nil, syscall.OPEN_EXISTING, syscall.FILE_ATTRIBUTE_NORMAL, 0)

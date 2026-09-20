@@ -134,8 +134,15 @@ func (s Store) Get(ref string) ([]byte, Record, error) {
 	}
 	defer dec.Close()
 	b, e := io.ReadAll(io.LimitReader(dec, max+1))
+	// Release the compressed file before parsing metadata. Windows writers
+	// may be waiting to replace it; decompression no longer needs the handle.
+	dec.Close()
+	closeErr := f.Close()
 	if e != nil {
 		return nil, r, e
+	}
+	if closeErr != nil {
+		return nil, r, closeErr
 	}
 	if int64(len(b)) > max {
 		return nil, r, fmt.Errorf("cache entry exceeds input limit")
