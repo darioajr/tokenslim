@@ -1,0 +1,5 @@
+PASS src/a.test.ts
+PASS src/b.test.ts
+FAIL src/payment.test.ts
+Expected: 2
+Actual: 1

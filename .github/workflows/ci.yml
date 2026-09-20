@@ -1,0 +1,134 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - name: Isolate local state
+        run: echo "TOKENSLIM_HOME=$RUNNER_TEMP/tokenslim-ci" >> "$GITHUB_ENV"
+      - name: Verify dependencies and plugin metadata
+        run: |
+          go mod verify
+          python3 scripts/validate-release.py
+      - name: Lint
+        run: make lint
+      - name: Tests and coverage
+        run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
+      - name: End-to-end scenarios for both adapters
+        run: make demo
+      - name: Add efficiency report to job summary
+        if: always()
+        run: |
+          if test -f scenarios/results/report.md; then
+            cat scenarios/results/report.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Upload coverage and scenario reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: test-results-${{ matrix.os }}
+          path: |
+            coverage.out
+            scenarios/results/
+          if-no-files-found: warn
+          retention-days: 14
+
+  fuzz:
+    name: Fuzz
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: go.mod
+      - run: go test ./internal/compressor -run '^$' -fuzz FuzzReducer -fuzztime 20s -parallel 2
+      - run: go test ./internal/hook -run '^$' -fuzz FuzzHook -fuzztime 20s -parallel 2
+      - name: Preserve failing inputs
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: fuzz-corpus
+          path: internal/**/testdata/fuzz/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  workflows:
+    name: Workflow lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: go.mod
+      - run: make workflow-lint
+
+  packages:
+    name: Packages
+    needs: [test, fuzz, workflows]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - name: Build and verify eight plugin archives
+        run: make release-check
+      - name: Smoke test Linux release
+        run: |
+          version=$(cat VERSION)
+          staging=$(mktemp -d)
+          for agent in claude codex; do
+            mkdir -p "$staging/$agent"
+            tar -xzf "dist/tokenslim-$version-$agent-linux-amd64.tar.gz" -C "$staging/$agent"
+            test "$("$staging/$agent/bin/tokenslim" version)" = "tokenslim $version"
+          done
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-packages
+          path: |
+            dist/*.tar.gz
+            dist/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 14

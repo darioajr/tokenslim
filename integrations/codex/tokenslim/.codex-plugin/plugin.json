@@ -1,0 +1,16 @@
+{
+  "name": "tokenslim",
+  "version": "0.1.0",
+  "description": "Local compression of verbose tool output, with original-output recovery",
+  "author": {"name": "TokenSlim contributors"},
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "TokenSlim",
+    "shortDescription": "Reduce noisy tool output locally.",
+    "longDescription": "Compress repeated build, test and runtime logs while preserving diagnostics and caching originals locally.",
+    "developerName": "TokenSlim contributors",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": "Use TokenSlim to inspect local output savings."
+  }
+}

@@ -1,0 +1,8 @@
+/bin/
+/dist/
+/integrations/codex/tokenslim/bin/
+/scenarios/results/
+/scenarios/generated/
+*.test
+coverage.out
+.DS_Store

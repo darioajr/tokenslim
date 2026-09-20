@@ -1,0 +1,103 @@
+version: 1
+mode: safe
+thresholds:
+    minimum_bytes: 4096
+    minimum_lines: 40
+    minimum_expected_reduction_percent: 10
+cache:
+    enabled: true
+    retention: 7d
+    max_size_mb: 1024
+tools:
+    Bash:
+        enabled: true
+    Edit:
+        enabled: false
+    Read:
+        enabled: false
+    Write:
+        enabled: false
+compressors:
+    ansible:
+        enabled: true
+        group_repeated_lines: true
+        group_timestamp_variants: true
+        keep_warning_lines: true
+        keep_error_lines: true
+    docker:
+        enabled: true
+        group_repeated_lines: true
+        group_timestamp_variants: true
+        keep_warning_lines: true
+        keep_error_lines: true
+    generic:
+        enabled: true
+        group_repeated_lines: true
+        group_timestamp_variants: true
+        keep_warning_lines: true
+        keep_error_lines: true
+    go_test:
+        enabled: true
+        group_repeated_lines: true
+        group_timestamp_variants: true
+        keep_warning_lines: true
+        keep_error_lines: true
+    gradle:
+        enabled: true
+        group_repeated_lines: true
+        group_timestamp_variants: true
+        keep_warning_lines: true
+        keep_error_lines: true
+    json:
+        enabled: true
+        group_repeated_lines: true
+        group_timestamp_variants: true
+        keep_warning_lines: true
+        keep_error_lines: true
+    kubernetes:
+        enabled: true
+        group_repeated_lines: true
+        group_timestamp_variants: true
+        keep_warning_lines: true
+        keep_error_lines: true
+    maven:
+        enabled: true
+        group_repeated_lines: true
+        group_timestamp_variants: true
+        keep_warning_lines: true
+        keep_error_lines: true
+    node_test:
+        enabled: true
+        group_repeated_lines: true
+        group_timestamp_variants: true
+        keep_warning_lines: true
+        keep_error_lines: true
+    pytest:
+        enabled: true
+        group_repeated_lines: true
+        group_timestamp_variants: true
+        keep_warning_lines: true
+        keep_error_lines: true
+    rust_test:
+        enabled: true
+        group_repeated_lines: true
+        group_timestamp_variants: true
+        keep_warning_lines: true
+        keep_error_lines: true
+    terraform:
+        enabled: true
+        group_repeated_lines: true
+        group_timestamp_variants: true
+        keep_warning_lines: true
+        keep_error_lines: true
+metrics:
+    enabled: true
+debug:
+    enabled: false
+limits:
+    max_input_mb: 100
+target:
+    max_output_bytes: 200000
+    max_reduction_percent: 95
+token_estimate:
+    characters_per_token: 4

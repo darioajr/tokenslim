@@ -1,0 +1,2 @@
+alpha [repeated x3]
+ERROR boom

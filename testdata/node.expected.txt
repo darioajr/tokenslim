@@ -1,0 +1,4 @@
+[TokenSlim: 2 passed suites omitted]
+FAIL src/payment.test.ts
+Expected: 2
+Actual: 1

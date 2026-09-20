@@ -1,0 +1,3 @@
+[TokenSlim: 2 dependency transfers omitted]
+[ERROR] Failed test PaymentTest
+ app.java:21
