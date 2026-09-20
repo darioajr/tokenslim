@@ -14,9 +14,11 @@ The release workflow can also call it through `workflow_call`.
 |---|---|---|
 | Test (ubuntu-latest) | Dependencies, versions/manifests, go vet, gofmt, race detection, coverage, vulnerability scanning, and scenarios for both agents | `test-results-ubuntu-latest` |
 | Test (macos-latest) | The same checks on macOS, except the Linux-only vulnerability scan | `test-results-macos-latest` |
+| Test (windows-latest) | Dependencies, manifests, go vet, race detection, coverage, scenarios, and Bash hook execution with spaced paths | `test-results-windows-latest` |
+| Windows package smoke test | SHA-256 verification and execution of both packaged Windows AMD64 binaries | None |
 | Fuzz | 100,000 fuzz executions per target: compressor and hook | Corpus attached on failure |
 | Workflow lint | Workflow syntax and expressions using actionlint 1.7.12 | Fails if a workflow is invalid |
-| Packages | After the other jobs: cross-compilation, contents of all eight archives, checksums, and execution of both Linux amd64 binaries | `release-packages` |
+| Packages | After the other jobs: cross-compilation, contents of all twelve archives, checksums, and execution of both Linux amd64 binaries | `release-packages` |
 
 Test artifacts and reports are retained for 14 days. Each test job summary shows
 the byte-savings table. Artifacts include the JSON report, scenario outputs, hook
@@ -26,9 +28,11 @@ wall-clock deadline; each target still has a three-minute test timeout to catch
 hangs on shared runners. Latency benchmarks run locally with `make benchmark`; there
 is no performance threshold on shared runners.
 
-Packages cover Claude Code and Codex × Linux/macOS × amd64/arm64. Cross-compilation
-does not execute binaries for every architecture. The smoke test runs Linux amd64
-binaries only; the Go test suite also runs on macOS.
+Packages cover Claude Code and Codex × Linux/macOS/Windows × amd64/arm64. Cross-compilation
+does not execute binaries for every architecture. Package smoke tests run Linux AMD64 and Windows AMD64 binaries; the Go test suite
+also runs on macOS. Windows ARM64 is cross-compiled but not executed in CI.
+Linux/macOS archives use `.tar.gz`; Windows archives use `.zip` and contain
+`bin/tokenslim.exe`. All targets are 64-bit. Windows hook tests use Git Bash.
 
 ## Enable the workflows in your repository
 
@@ -39,7 +43,7 @@ binaries only; the Go test suite also runs on macOS.
 3. Under **Actions → CI → Run workflow**, run the initial validation. Manual
    dispatch becomes available once the workflow is on the default branch.
 4. Optionally configure a default-branch ruleset requiring `Test (ubuntu-latest)`,
-   `Test (macos-latest)`, `Fuzz`, `Workflow lint`, and `Packages`. Select the check
+   `Test (macos-latest)`, `Test (windows-latest)`, `Windows package smoke test`, `Fuzz`, `Workflow lint`, and `Packages`. Select the check
    names shown by GitHub after the first run.
 
 No PAT or manually configured secret is needed: publishing uses the automatic
@@ -72,7 +76,7 @@ Pushing the tag starts the Release workflow, which:
 1. Checks the tag, VERSION, manifests, and adapter selection.
 2. Runs the complete CI pipeline on the tagged commit.
 3. Downloads the packages produced by that run and verifies SHA-256 again.
-4. Creates a **draft GitHub Release** with generated notes, all eight packages,
+4. Creates a **draft GitHub Release** with generated notes, all twelve packages,
    and `SHA256SUMS`. Review it under **Releases** and publish when ready.
 
 Only the final job has `contents: write`. The `gh release create` command requires
@@ -88,7 +92,7 @@ make lint          # go vet and formatting checks
 make vulncheck     # reachable Go vulnerabilities (govulncheck 1.8.0)
 make demo          # Claude and Codex scenarios
 make workflow-lint # pinned actionlint; first use downloads the Go tool
-make release-check # eight packages plus content and checksum validation
+make release-check # twelve packages plus content and checksum validation
 ```
 
 `make release` writes to `dist/`; it does not publish or upload anything. The
@@ -100,9 +104,17 @@ Codex configuration script.
 To verify a download:
 
 ```sh
-# In the directory containing all eight archives and SHA256SUMS:
+# In the directory containing all twelve archives and SHA256SUMS:
 sha256sum --check SHA256SUMS # Linux
 shasum -a 256 -c SHA256SUMS # macOS
+```
+
+On Windows, run this in PowerShell and compare the result with the matching
+entry in `SHA256SUMS`. Replace VERSION and AGENT with the downloaded values.
+Use `Expand-Archive` to extract the ZIP.
+
+```powershell
+Get-FileHash .\tokenslim-VERSION-AGENT-windows-amd64.zip -Algorithm SHA256
 ```
 
 ## Maintenance and troubleshooting

@@ -36,7 +36,8 @@ by building or running the tests.
 Originals are zstd-compressed and content-addressed by SHA-256. The deterministic
 reference is the hash of the original text (CLI) or exact tool-response JSON
 (hooks). Metadata includes command hash, not the raw command. Cache directories
-are 0700 and atomically replaced files 0600. A failed cache write rejects the
+are 0700 and atomically replaced files 0600 on Unix. Windows uses inherited
+filesystem ACLs. A failed cache write rejects the
 transformation. Recovery verifies the hash and size. Concurrent identical outputs
 share an original; metadata records the most recent writer. Retention and oldest
 first size pruning run on writes. Active references can expire with cache pruning.

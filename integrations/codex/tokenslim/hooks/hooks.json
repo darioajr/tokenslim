@@ -1,12 +1,16 @@
 {
   "hooks": {
-    "PostToolUse": [{
-      "matcher": "^Bash$",
-      "hooks": [{
-        "type": "command",
-        "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/tokenslim\" hook post-tool-use --agent codex",
-        "timeout": 10
-      }]
-    }]
+    "PostToolUse": [
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f \"${CLAUDE_PLUGIN_ROOT}/bin/tokenslim.exe\" ]; then exec \"${CLAUDE_PLUGIN_ROOT}/bin/tokenslim.exe\" hook post-tool-use --agent codex; else exec \"${CLAUDE_PLUGIN_ROOT}/bin/tokenslim\" hook post-tool-use --agent codex; fi",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
   }
 }

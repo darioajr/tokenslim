@@ -56,5 +56,5 @@ jobs:
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          gh release create "$RELEASE_TAG" dist/*.tar.gz dist/SHA256SUMS \
+          gh release create "$RELEASE_TAG" dist/*.tar.gz dist/*.zip dist/SHA256SUMS \
             --verify-tag --draft --generate-notes --title "TokenSlim $RELEASE_TAG"

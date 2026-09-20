@@ -3,6 +3,7 @@ package cache
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -22,7 +23,8 @@ func TestRoundtrip(t *testing.T) {
 	}
 	for _, p := range []string{s.Dir, filepath.Join(s.Dir, ref+".zst"), filepath.Join(s.Dir, ref+".json")} {
 		info, _ := os.Stat(p)
-		if info.Mode().Perm()&0077 != 0 {
+		// Windows uses inherited ACLs rather than POSIX permission bits.
+		if runtime.GOOS != "windows" && info.Mode().Perm()&0077 != 0 {
 			t.Fatal("public permissions", p)
 		}
 	}

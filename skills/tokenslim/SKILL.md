@@ -4,7 +4,7 @@ description: Inspect TokenSlim compression statistics, benchmark local build or 
 ---
 
 TokenSlim's PostToolUse hook compresses eligible Bash results automatically. The
-binary is `bin/tokenslim` inside the installed plugin root; resolve that root from
+binary is `bin/tokenslim` (`bin/tokenslim.exe` on Windows) inside the installed plugin root; resolve that root from
 this skill's location. Use the installed binary instead of assuming it is on PATH.
 
 - Run `tokenslim stats` for measured local savings (token counts are estimates).

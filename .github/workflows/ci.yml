@@ -48,7 +48,9 @@ jobs:
         if: runner.os == 'Linux'
         run: make vulncheck
       - name: End-to-end scenarios for both adapters
-        run: make demo
+        run: |
+          make demo
+          python3 scripts/check-hook-command.py
       - name: Add efficiency report to job summary
         if: always()
         run: |
@@ -60,6 +62,43 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: test-results-${{ matrix.os }}
+          path: |
+            coverage.out
+            scenarios/results/
+          if-no-files-found: warn
+          retention-days: 14
+
+  windows:
+    name: Test (windows-latest)
+    runs-on: windows-latest
+    timeout-minutes: 15
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Verify, test, and build
+        shell: bash
+        run: |
+          go mod verify
+          python scripts/validate-release.py
+          go vet ./...
+          go test -race -coverprofile=coverage.out -covermode=atomic ./...
+          python scripts/build.py
+          python scenarios/run.py --check
+          python scripts/check-hook-command.py
+      - name: Upload coverage and scenario reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: test-results-windows-latest
           path: |
             coverage.out
             scenarios/results/
@@ -103,7 +142,7 @@ jobs:
 
   packages:
     name: Packages
-    needs: [test, fuzz, workflows]
+    needs: [test, windows, fuzz, workflows]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -116,7 +155,7 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
-      - name: Build and verify eight plugin archives
+      - name: Build and verify twelve plugin archives
         run: make release-check
       - name: Smoke test Linux release
         run: |
@@ -132,6 +171,36 @@ jobs:
           name: release-packages
           path: |
             dist/*.tar.gz
+            dist/*.zip
             dist/SHA256SUMS
           if-no-files-found: error
           retention-days: 14
+
+  windows-packages:
+    name: Windows package smoke test
+    needs: packages
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-packages
+          path: dist
+      - name: Verify checksums and run Windows AMD64 packages
+        shell: pwsh
+        run: |
+          foreach ($line in Get-Content dist/SHA256SUMS) {
+            $digest, $name = $line -split '  ', 2
+            if ((Get-FileHash "dist/$name" -Algorithm SHA256).Hash.ToLower() -ne $digest) {
+              throw "Checksum mismatch: $name"
+            }
+          }
+          foreach ($archive in Get-ChildItem dist/*-windows-amd64.zip) {
+            $destination = Join-Path $env:RUNNER_TEMP $archive.BaseName
+            Expand-Archive $archive.FullName $destination
+            $version = (Get-Content "$destination/VERSION").Trim()
+            $actual = & "$destination/bin/tokenslim.exe" version
+            if ($LASTEXITCODE -ne 0 -or $actual -ne "tokenslim $version") {
+              throw "Invalid binary: $archive"
+            }
+          }

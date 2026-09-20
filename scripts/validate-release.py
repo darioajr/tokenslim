@@ -6,6 +6,9 @@ import json
 from pathlib import Path
 import re
 import tarfile
+import zipfile
+import stat
+import struct
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -31,35 +34,61 @@ def validate(tag=None, packages=False):
         if not (root / 'skills/tokenslim/SKILL.md').is_file():
             raise ValueError(f'{agent}: missing recovery skill')
     if packages:
-        expected = {f'tokenslim-{version}-{agent}-{os_name}-{arch}.tar.gz'
-                    for agent in roots for os_name in ('linux', 'darwin')
+        expected = {f"tokenslim-{version}-{agent}-{os_name}-{arch}." +
+                    ('zip' if os_name == 'windows' else 'tar.gz')
+                    for agent in roots for os_name in ('linux', 'darwin', 'windows')
                     for arch in ('amd64', 'arm64')}
         dist = ROOT / 'dist'
         entries = [line.split('  ', 1) for line in (dist / 'SHA256SUMS').read_text().splitlines()]
-        if len(entries) != 8 or {name for _, name in entries} != expected:
-            raise ValueError('checksums must list exactly the eight current-version packages')
+        if len(entries) != len(expected) or {name for _, name in entries} != expected:
+            raise ValueError('checksums must list exactly the twelve current-version packages')
         for digest, name in entries:
             path = dist / name
             if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
                 raise ValueError(f'checksum mismatch: {name}')
             agent = 'claude' if '-claude-' in name else 'codex'
-            with tarfile.open(path, 'r:gz') as archive:
-                members = {}
-                for member in archive.getmembers():
-                    relative = member.name.removeprefix('./')
-                    if member.name.startswith('/') or '..' in Path(relative).parts or member.issym() or member.islnk():
-                        raise ValueError(f'unsafe archive member: {member.name}')
-                    members[relative] = member
-                required = {'bin/tokenslim', f'.{agent}-plugin/plugin.json', 'hooks/hooks.json',
-                            'skills/tokenslim/SKILL.md', 'README.md', 'LICENSE', 'VERSION',
-                            'docs/ci-cd.md', 'scripts/codex-hook-config.py'}
-                if not required <= members.keys():
-                    raise ValueError(f'incomplete archive: {name}')
-                if members['bin/tokenslim'].mode & 0o111 == 0:
-                    raise ValueError(f'non-executable binary: {name}')
-                manifest = json.load(archive.extractfile(members[f'.{agent}-plugin/plugin.json']))
-                if manifest['version'] != version:
-                    raise ValueError(f'archive manifest version mismatch: {name}')
+            windows = '-windows-' in name
+            binary = 'bin/tokenslim.exe' if windows else 'bin/tokenslim'
+            required = {binary, f'.{agent}-plugin/plugin.json', 'hooks/hooks.json',
+                        'skills/tokenslim/SKILL.md', 'README.md', 'LICENSE', 'VERSION',
+                        'docs/ci-cd.md', 'scripts/codex-hook-config.py'}
+            members = {}
+            modes = {}
+            if windows:
+                with zipfile.ZipFile(path) as archive:
+                    for member in archive.infolist():
+                        relative = member.filename
+                        mode = member.external_attr >> 16
+                        if relative.startswith('/') or '..' in Path(relative).parts or stat.S_ISLNK(mode):
+                            raise ValueError(f'unsafe archive member: {relative}')
+                        members[relative] = archive.read(member)
+                        modes[relative] = mode
+            else:
+                with tarfile.open(path, 'r:gz') as archive:
+                    for member in archive.getmembers():
+                        relative = member.name.removeprefix('./')
+                        if member.name.startswith('/') or '..' in Path(relative).parts or member.issym() or member.islnk():
+                            raise ValueError(f'unsafe archive member: {member.name}')
+                        if member.isfile():
+                            members[relative] = archive.extractfile(member).read()
+                            modes[relative] = member.mode
+            if not required <= members.keys():
+                raise ValueError(f'incomplete archive: {name}')
+            if not windows and modes[binary] & 0o111 == 0:
+                raise ValueError(f'non-executable binary: {name}')
+            if windows and not members[binary].startswith(b'MZ'):
+                raise ValueError(f'invalid Windows executable: {name}')
+            if windows:
+                executable = members[binary]
+                pe = struct.unpack_from('<I', executable, 0x3c)[0]
+                machine = 0xAA64 if '-arm64.' in name else 0x8664
+                if (executable[pe:pe+4] != b'PE\0\0'
+                        or struct.unpack_from('<H', executable, pe+4)[0] != machine
+                        or struct.unpack_from('<H', executable, pe+24)[0] != 0x20b):
+                    raise ValueError(f'wrong Windows architecture: {name}')
+            manifest = json.loads(members[f'.{agent}-plugin/plugin.json'])
+            if manifest['version'] != version:
+                raise ValueError(f'archive manifest version mismatch: {name}')
     return version
 
 
@@ -70,5 +99,5 @@ if __name__ == '__main__':
     args = parser.parse_args()
     try:
         print(f'Release {validate(args.tag, args.packages)} validated')
-    except (ValueError, KeyError, OSError, tarfile.TarError) as error:
+    except (ValueError, KeyError, OSError, tarfile.TarError, zipfile.BadZipFile, struct.error) as error:
         parser.exit(1, f'Release validation failed: {error}\n')

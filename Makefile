@@ -2,9 +2,7 @@
 PREFIX ?= $(HOME)/.local
 VERSION ?= $(shell cat VERSION)
 build:
-	go build -trimpath -ldflags '-s -w -X main.version=$(VERSION)' -o bin/tokenslim ./cmd/tokenslim
-	mkdir -p integrations/codex/tokenslim/bin
-	cp bin/tokenslim integrations/codex/tokenslim/bin/tokenslim
+	VERSION="$(VERSION)" python3 scripts/build.py
 test:
 	go test -race ./...
 benchmark:

@@ -30,6 +30,49 @@ dry run that writes neither cache entries nor metrics. The `optimize` command
 and hooks save the original output. Flags must precede the file name; `-` reads
 stdin. Token counts are local estimates.
 
+## Supported platforms
+
+Releases contain separate Claude Code and Codex packages for these 64-bit targets:
+
+| System | Architectures | Archive |
+|---|---|---|
+| Linux | AMD64 (x86-64), ARM64 | `.tar.gz` |
+| macOS | AMD64 (Intel), ARM64 (Apple Silicon) | `.tar.gz` |
+| Windows | AMD64 (x86-64), ARM64 | `.zip` |
+
+32-bit x86 and ARM are not supported. Download the package matching both your
+agent and operating system/architecture, then extract it before installation.
+Windows packages contain `bin/tokenslim.exe`; Linux/macOS packages contain
+`bin/tokenslim`. WSL uses the Linux package.
+
+### Windows
+
+Install Git for Windows for the Bash hook commands. The current adapters match
+only the `Bash` tool; PowerShell tool output is not compressed automatically.
+See [Claude Code's Windows setup](https://code.claude.com/docs/en/setup).
+The standalone CLI can also run directly from PowerShell:
+
+```powershell
+.\bin\tokenslim.exe version
+.\bin\tokenslim.exe stats
+```
+
+For a source checkout, build and run the scenarios without Make:
+
+```powershell
+$env:PYTHONUTF8 = "1"
+python scripts/build.py
+go test ./...
+python scenarios/run.py --check
+python scripts/codex-hook-config.py > tokenslim-codex-hooks.json
+```
+
+The generated Codex command targets Git Bash and includes the `.exe` suffix on
+Windows. Merge its hook block into your Codex hook configuration and trust it as
+described below. Packaged hooks select the correct executable automatically.
+CI runs native Windows AMD64 tests and package smoke tests; Windows ARM64 is
+cross-compiled and archive-validated, without a native ARM64 execution test.
+
 ## Claude Code
 
 After running `make build`, start Claude Code from the project root:
@@ -107,7 +150,8 @@ bin/tokenslim cache prune
 bin/tokenslim cache clear
 ```
 
-The cache uses zstd and SHA-256, with 0700 directories and 0600 files. Originals
+The cache uses zstd and SHA-256, with 0700 directories and 0600 files on Unix.
+On Windows, access is controlled by inherited filesystem ACLs. Originals
 may contain secrets already present in logs; they remain local. Clearing or
 expiring the cache removes the ability to recover those originals. If the cache
 fails or is disabled, the original output is retained. Metrics are stored as
@@ -127,7 +171,7 @@ make release-check # build and verify release packages
 make install       # install only the binary into ~/.local/bin
 ```
 
-Releases include separate Claude/Codex packages for macOS/Linux and arm64/amd64,
+Releases include separate Claude/Codex packages for macOS/Linux/Windows and arm64/amd64 (64-bit only),
 with checksums. Unit, golden, invariant, and fuzz tests cover the reducers and
 adapters. The demo corpus is synthetic; it does not establish billed-token
 savings, production p95 latency, or acceptance in live agent sessions.
@@ -135,7 +179,7 @@ savings, production p95 latency, or acceptance in live agent sessions.
 ## GitHub Actions
 
 [CI](.github/workflows/ci.yml) runs tests, the race detector, coverage, fuzzing,
-lint, and efficiency scenarios on Linux/macOS. It also verifies all eight
+lint, and efficiency scenarios on Linux/macOS/Windows. It also verifies all twelve
 Claude/Codex packages and uploads reports as workflow artifacts.
 
 Tags matching `vMAJOR.MINOR.PATCH` trigger the

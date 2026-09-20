@@ -11,7 +11,7 @@ import subprocess
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
-BINARY = ROOT / 'bin/tokenslim'
+BINARY = ROOT / 'bin' / ('tokenslim.exe' if os.name == 'nt' else 'tokenslim')
 
 
 def cases():
@@ -52,7 +52,7 @@ def cases():
 
 
 def run(args, data=None, env=None):
-    p = subprocess.run([str(BINARY), *args], input=data, text=True, capture_output=True, env=env, check=True)
+    p = subprocess.run([str(BINARY), *args], input=data, text=True, encoding="utf-8", capture_output=True, env=env, check=True)
     assert not p.stderr, p.stderr
     return p.stdout
 
@@ -77,12 +77,12 @@ def main():
         baseline = hashlib.sha256(baseline_source.read_bytes()).hexdigest()
         for name, command, original, critical in cases():
             file = generated/(name+'.log')
-            file.write_text(original)
+            file.write_text(original, encoding="utf-8", newline="")
             for mode in ('safe', 'smart'):
                 Path(temp, 'config.yaml').write_text(f'version: 1\nmode: {mode}\n')
                 benchmark = json.loads(run(['benchmark', '--command', command, '--json', str(file)], env=env))
                 optimized = run(['optimize', '--command', command, str(file)], env=env)
-                (results/f'{name}-{mode}.log').write_text(optimized)
+                (results/f'{name}-{mode}.log').write_text(optimized, encoding="utf-8")
                 for fingerprint in critical:
                     assert fingerprint in optimized, (name, mode, fingerprint)
                 # Repeatability includes stable content-addressed references.
@@ -137,7 +137,7 @@ def main():
     report += ['', 'Checks: diagnostics preserved; originals recovered; deterministic output;',
                'execution metadata preserved; Read ignored; invalid JSON tolerated; source unchanged.',
                'These results validate the hook protocol. A live session requires installation and hook trust in the host agent.', '']
-    (results/'report.md').write_text('\n'.join(report))
+    (results/'report.md').write_text('\n'.join(report), encoding='utf-8')
     (results/'report.json').write_text(json.dumps(rows, indent=2)+'\n')
     print('\n'.join(report))
     print(f'Report: {results / "report.md"}')
