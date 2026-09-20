@@ -23,15 +23,19 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
-      - name: Require tag to match VERSION and manifests
+      - name: Validate tag and stamp release metadata
         env:
           RELEASE_TAG: ${{ github.ref_name }}
-        run: python3 scripts/validate-release.py --tag "$RELEASE_TAG"
+        run: |
+          python3 scripts/set-release-version.py --tag "$RELEASE_TAG"
+          python3 scripts/validate-release.py --tag "$RELEASE_TAG"
 
   checks:
     name: Release checks
     needs: version
     uses: ./.github/workflows/ci.yml
+    with:
+      release_tag: ${{ github.ref_name }}
     permissions:
       contents: read
 

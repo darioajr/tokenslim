@@ -52,29 +52,34 @@ validates the local contract, not an authenticated Claude/Codex conversation.
 
 ## Create a release
 
-[VERSION](../VERSION) is the version source. Before releasing, also update the
-`version` fields in both manifests:
+The Git tag is the version source for a release. You do not need to edit
+`VERSION` or either plugin manifest before tagging. Only stable tags in the form
+`vMAJOR.MINOR.PATCH` are accepted; prereleases are not supported yet.
 
-- `.claude-plugin/plugin.json`
-- `integrations/codex/tokenslim/.codex-plugin/plugin.json`
-
-The build injects this version into the binary through the linker. Only stable
-`MAJOR.MINOR.PATCH` versions are accepted; prereleases are not supported by this
-pipeline yet. The tag must be exactly `v` followed by the contents of `VERSION`.
+After committing and pushing the changes you want to release:
 
 ```sh
-python3 scripts/validate-release.py
-make test lint demo workflow-lint release-check
-# After committing and pushing the changes to the remote:
-version=$(cat VERSION)
-git tag -a "v$version" -m "TokenSlim $version"
-git push origin "v$version"
+# Example: choose a new, unused release version.
+git tag -a v0.2.0 -m "TokenSlim 0.2.0"
+git push origin v0.2.0
 ```
+
+The pipeline passes the tag to the reusable CI workflow. Each build/test checkout
+runs `scripts/set-release-version.py` before validating metadata or building.
+For `v0.2.0`, this sets `VERSION` and both plugin manifests to `0.2.0`. The build
+then injects that version into the executable and uses it in archive names.
+The archived `VERSION` and manifests are checked against the same value.
+
+These changes exist in the workflow checkouts and release assets. The pipeline
+does not commit them to `main` or move the tag. GitHub's automatic source archives
+reflect the original tagged commit, while the attached redistributables contain
+the stamped release version. Ordinary branch/PR builds still use the checked-in
+`VERSION` and require matching manifests.
 
 Pushing the tag starts the Release workflow, which:
 
-1. Checks the tag, VERSION, manifests, and adapter selection.
-2. Runs the complete CI pipeline on the tagged commit.
+1. Validates the tag format and stamps release metadata.
+2. Runs the complete CI pipeline on the tagged commit with the tag-derived version.
 3. Downloads the packages produced by that run and verifies SHA-256 again.
 4. Creates a **draft GitHub Release** with generated notes, all twelve packages,
    and `SHA256SUMS`. Review it under **Releases** and publish when ready.
@@ -93,7 +98,9 @@ including checksum verification, and download the attached release packages.
 
 ## Maintenance and troubleshooting
 
-- **Tag mismatch:** update VERSION and both manifests in the correct commit.
+- **Invalid release tag:** use `vMAJOR.MINOR.PATCH`, without leading zeros or suffixes.
+- **Local metadata mismatch:** synchronize local files with
+  `python3 scripts/set-release-version.py --tag vMAJOR.MINOR.PATCH`.
 - **Formatting:** run `gofmt -w cmd internal` and review the changes.
 - **Scenario failure:** inspect the `test-results-*` artifacts. Reproduce original
   outputs by running `make demo` locally.

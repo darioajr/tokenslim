@@ -86,6 +86,8 @@ def validate(tag=None, packages=False):
                         or struct.unpack_from('<H', executable, pe+4)[0] != machine
                         or struct.unpack_from('<H', executable, pe+24)[0] != 0x20b):
                     raise ValueError(f'wrong Windows architecture: {name}')
+            if members['VERSION'].decode('utf-8').strip() != version:
+                raise ValueError(f'archive VERSION mismatch: {name}')
             manifest = json.loads(members[f'.{agent}-plugin/plugin.json'])
             if manifest['version'] != version:
                 raise ValueError(f'archive manifest version mismatch: {name}')

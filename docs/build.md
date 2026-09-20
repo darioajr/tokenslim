@@ -139,8 +139,9 @@ native execution on every architecture; Windows ARM64 is not executed in CI.
 ## Publish through GitHub Actions
 
 See [CI and releases](ci-cd.md) for the full workflow. Push the source changes
-before sending a `vMAJOR.MINOR.PATCH` tag matching `VERSION` and both manifests.
-The tag triggers validation, builds the packages, and creates a draft GitHub
+before sending a new `vMAJOR.MINOR.PATCH` tag. No manual version edits are needed:
+the workflow stamps `VERSION` and both manifests from the tag in every build
+checkout. The tag triggers validation, builds the packages, and creates a draft GitHub
 Release containing all twelve archives and `SHA256SUMS`. Review and publish that
 draft so users can download its assets.
 
@@ -148,3 +149,19 @@ The trigger is a tag push, not the publication of a release through the GitHub
 interface. Creating the release manually first can conflict with the workflow's
 release-creation step. CI artifacts are retained temporarily; published release
 assets are the user-facing distribution channel.
+
+Release stamping changes the build checkouts and attached packages; it does not
+create a version-bump commit on `main`. Local builds use the checked-in version.
+To reproduce a tagged release locally, synchronize metadata first (this edits
+`VERSION` and both manifests in your working tree):
+
+```sh
+python3 scripts/set-release-version.py --tag v0.2.0
+make release-check
+```
+
+The version-stamping regression tests run without Go or external Python packages:
+
+```sh
+python3 -m unittest discover -s scripts -p 'test_*.py'
+```

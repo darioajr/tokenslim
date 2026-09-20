@@ -6,6 +6,12 @@ on:
   pull_request:
   workflow_dispatch:
   workflow_call:
+    inputs:
+      release_tag:
+        description: Tag used to stamp release metadata in each build checkout
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -34,12 +40,19 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
+      - name: Stamp version from release tag
+        if: inputs.release_tag != ''
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: python scripts/set-release-version.py --tag "$RELEASE_TAG"
       - name: Isolate local state
         run: echo "TOKENSLIM_HOME=$RUNNER_TEMP/tokenslim-ci" >> "$GITHUB_ENV"
       - name: Verify dependencies and plugin metadata
         run: |
           go mod verify
           python3 scripts/validate-release.py
+          python3 -m unittest discover -s scripts -p 'test_*.py'
       - name: Lint
         run: make lint
       - name: Tests and coverage
@@ -84,11 +97,18 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
+      - name: Stamp version from release tag
+        if: inputs.release_tag != ''
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: python scripts/set-release-version.py --tag "$RELEASE_TAG"
       - name: Verify, test, and build
         shell: bash
         run: |
           go mod verify
           python scripts/validate-release.py
+          python -m unittest discover -s scripts -p 'test_*.py'
           go vet ./...
           go test -race -coverprofile=coverage.out -covermode=atomic ./...
           python scripts/build.py
@@ -155,6 +175,12 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
+      - name: Stamp version from release tag
+        if: inputs.release_tag != ''
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: python scripts/set-release-version.py --tag "$RELEASE_TAG"
       - name: Build and verify twelve plugin archives
         run: make release-check
       - name: Smoke test Linux release
