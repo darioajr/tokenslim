@@ -53,3 +53,24 @@ func TestPHPReduction(t *testing.T) {
 		}
 	}
 }
+
+func TestBuildCommands(t *testing.T) {
+	for command, want := range map[string]string{
+		"python3.14 -m pytest -v": "pytest", "pytest -vv tests": "pytest",
+		"go test -v ./...": "go-test", "./gradlew build --console=plain": "gradle",
+		"gradlew.bat test": "gradle", "./node_modules/.bin/vitest run": "vitest",
+		"npx vitest run": "vitest", "pnpm exec vitest run": "vitest", "bun x vitest run": "vitest",
+	} {
+		if got := BuildReduction(command); got != want {
+			t.Errorf("%s: %s", command, got)
+		}
+		if got := Detect(command, ""); got != want {
+			t.Errorf("detect %s: %s", command, got)
+		}
+	}
+	for _, command := range []string{"cat pytest", "echo go test", "go build", "npm test", "python script.py", "pytest && echo done", "npx vitest | tee log", "gradle build; cat log"} {
+		if got := BuildReduction(command); got != "" {
+			t.Errorf("unsafe scope %s: %s", command, got)
+		}
+	}
+}

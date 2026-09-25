@@ -196,7 +196,7 @@ func Key(name string) string {
 	switch name {
 	case "php-test":
 		return "php_test"
-	case "node-test":
+	case "node-test", "vitest":
 		return "node_test"
 	case "kubernetes-log":
 		return "kubernetes"

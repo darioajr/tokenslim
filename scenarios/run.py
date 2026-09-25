@@ -11,6 +11,7 @@ import subprocess
 import tempfile
 
 from php import cases as php_cases
+from builds import cases as build_cases
 
 ROOT = Path(__file__).resolve().parents[1]
 BINARY = ROOT / 'bin' / ('tokenslim.exe' if os.name == 'nt' else 'tokenslim')
@@ -50,7 +51,7 @@ def cases():
                    ''.join(f'\x1b[32mProcessando conexão {g}: ação concluída ✓\x1b[0m  \n'*8 + f'Lote {g} preservado\n' for g in range(50))+'ERROR conexão indisponível app.go:41\n',
                    ['ERROR conexão indisponível app.go:41']))
     result.append(('unique', 'build', ''.join(f'Unique event {i}: no repeated content, retain every observation\n' for i in range(100)), ['Unique event 99']))
-    return result + php_cases()
+    return result + php_cases() + build_cases()
 
 
 def run(args, data=None, env=None):
@@ -59,8 +60,8 @@ def run(args, data=None, env=None):
     return p.stdout.decode("utf-8")
 
 
-def check_php_controls(home, work, env):
-    _, command, original, _, _ = next(c for c in php_cases() if c[0] == 'pest-success')
+def check_controls(home, work, env, case, key):
+    _, command, original, _, _ = case
     controls = {
         'off': 'mode: off\n',
         'disabled': 'mode: smart\ncompressors:\n  php_test:\n    enabled: false\n',
@@ -72,7 +73,7 @@ def check_php_controls(home, work, env):
         'cache-disabled': 'mode: smart\ncache:\n  enabled: false\n',
     }
     for name, config in controls.items():
-        Path(home, 'config.yaml').write_text('version: 1\n' + config)
+        Path(home, 'config.yaml').write_text('version: 1\n' + config.replace('php_test:', key + ':'))
         assert run(['optimize', '--command', command, '-'], original, env) == original, name
         for agent in ('claude', 'codex'):
             response = ({'stdout': original, 'stderr': '', 'interrupted': False, 'isImage': False, 'exitCode': 0}
@@ -164,7 +165,11 @@ def main():
                     payload['tool_name'] = 'Read'
                     assert run(['hook', 'post-tool-use', '--agent', agent], json.dumps(payload), env) == ''
                 rows.append(dict(scenario=name, **benchmark))
-        check_php_controls(temp, work, env)
+        control_cases = php_cases() + build_cases()
+        for name, key in [('pest-success', 'php_test'), ('pytest-success', 'pytest'),
+                          ('go-test-success', 'go_test'), ('vitest-success', 'node_test'),
+                          ('gradle-success', 'gradle')]:
+            check_controls(temp, work, env, next(c for c in control_cases if c[0] == name), key)
         assert hashlib.sha256(baseline_source.read_bytes()).hexdigest() == baseline
         stats = json.loads(run(['stats', '--json'], env=env))
         assert stats['Total']['Changed'] > 0
@@ -179,7 +184,7 @@ def main():
         reduction = 100*(1-r['optimized_bytes']/r['original_bytes'])
         report.append(f"| {r['scenario']} | {r['mode']} | {r['original_bytes']} | {r['optimized_bytes']} | {reduction:.1f}% | {r['estimated_original_tokens']} → {r['estimated_optimized_tokens']} |")
     report += ['', 'Checks: diagnostics preserved; originals recovered; deterministic output;',
-               'stdout/stderr and execution metadata preserved; PHP configuration controls honored;',
+               'stdout/stderr and execution metadata preserved; PHP/build configuration controls honored;',
                'Read ignored; invalid JSON tolerated; source unchanged.',
                'These results validate the hook protocol. A live session requires installation and hook trust in the host agent.', '']
     (results/'report.md').write_text('\n'.join(report), encoding='utf-8')

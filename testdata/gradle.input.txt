@@ -1,0 +1,11 @@
+> Task :app:compileJava UP-TO-DATE
+> Task :app:compileTestJava FROM-CACHE
+> Task :app:processResources NO-SOURCE
+> Task :app:test
+PaymentTest > updatesRecord FAILED
+    org.opentest4j.AssertionFailedError: expected: <2> but was: <1>
+        at app.PaymentTest.updatesRecord(PaymentTest.java:12)
+> Task :app:payload UP-TO-DATE
+FAILURE: Build failed with an exception.
+BUILD FAILED in 2s
+4 actionable tasks: 1 executed, 1 from cache, 2 up-to-date

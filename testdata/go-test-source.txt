@@ -1,0 +1,5 @@
+package sample
+import "testing"
+func TestCreate(t *testing.T) {}
+func TestRead(t *testing.T) {}
+func TestUpdate(t *testing.T) { t.Fatal("expected 2, got 1") }

@@ -1,0 +1,11 @@
+============================= test session starts ==============================
+tests/test_store.py::test_create PASSED [ 25%]
+tests/test_store.py::test_read PASSED [ 50%]
+tests/test_store.py::test_update FAILED [ 75%]
+_______________________________ test_update _______________________________
+    actual = update()
+>   assert actual == 2
+E   AssertionError: assert 1 == 2
+    tests/test_store.py::test_body PASSED [100%]
+tests/test_store.py:12: AssertionError
+==================== 1 failed, 2 passed in 0.04s ====================

@@ -1,0 +1,7 @@
+[TokenSlim: 2 passed tests omitted]
+=== RUN   TestUpdate
+    sample_test.go:5: expected 2, got 1
+--- FAIL: TestUpdate (0.00s)
+FAIL
+FAIL	example.test/sample	0.320s
+FAIL

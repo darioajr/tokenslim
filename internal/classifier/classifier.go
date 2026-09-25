@@ -16,6 +16,7 @@ var patterns = []struct {
 	{"php", regexp.MustCompile(`(^|[\s;&|/\\])php([0-9]+(\.[0-9]+)*)?(\.exe)?(\s|$)`)},
 	{"maven", regexp.MustCompile(`(^|[\s;&|/])(mvn|mvnw)(\s|$)`)},
 	{"gradle", regexp.MustCompile(`(^|[\s;&|/])(gradle|gradlew)(\s|$)`)},
+	{"vitest", regexp.MustCompile(`(^|[\s;&|/])vitest(\s|$)`)},
 	{"node-test", regexp.MustCompile(`(^|[\s;&|/])((npm|pnpm|yarn)\s+(run\s+)?test|jest|vitest|mocha)(\s|$)`)},
 	{"pytest", regexp.MustCompile(`(^|[\s;&|/])pytest(\s|$)`)},
 	{"go-test", regexp.MustCompile(`(^|[\s;&|/])go\s+test(\s|$)`)},
@@ -27,6 +28,9 @@ var patterns = []struct {
 }
 
 func Detect(command, output string) string {
+	if kind := BuildReduction(command); kind != "" {
+		return kind
+	}
 	for _, p := range patterns {
 		if p.re.MatchString(command) {
 			return p.name

@@ -70,17 +70,17 @@ func TestJSONNumbers(t *testing.T) {
 	}
 }
 func FuzzReducer(f *testing.F) {
-	for _, s := range []string{"ERROR failure\rprogress", "\x1b[31mred\x1b[0m", "{\"a\":1}", "retry\nretry\n"} {
+	for _, s := range []string{"ERROR failure\rprogress", "\x1b[31mred\x1b[0m", "{\"a\":1}", "retry\nretry\n", "tests/test_a.py::test_a PASSED [100%]\n", "=== RUN   TestA\n--- PASS: TestA (0.00s)\n", " ✓ tests/a.test.ts (1 test) 1ms\n", "> Task :compileJava UP-TO-DATE\n"} {
 		f.Add(s)
 	}
 	f.Fuzz(func(t *testing.T, s string) {
 		if len(s) > 1<<20 {
 			t.Skip()
 		}
-		for _, kind := range []string{"generic", "maven", "node-test", "kubernetes-log", "docker-log", "php", "composer", "php-test", "laravel"} {
+		for _, kind := range []string{"generic", "maven", "node-test", "kubernetes-log", "docker-log", "php", "composer", "php-test", "laravel", "pytest", "go-test", "vitest", "gradle"} {
 			r := Reducer{kind}
-			a := r.Compress(Context{Mode: "smart", GroupTimestamps: true, Command: map[string]string{"composer": "composer install", "php-test": "vendor/bin/pest", "laravel": "php artisan test"}[kind]}, s)
-			b := r.Compress(Context{Mode: "smart", GroupTimestamps: true, Command: map[string]string{"composer": "composer install", "php-test": "vendor/bin/pest", "laravel": "php artisan test"}[kind]}, s)
+			a := r.Compress(Context{Mode: "smart", GroupTimestamps: true, Command: map[string]string{"composer": "composer install", "php-test": "vendor/bin/pest", "laravel": "php artisan test", "pytest": "pytest -v", "go-test": "go test -v", "vitest": "vitest run", "gradle": "gradle build"}[kind]}, s)
+			b := r.Compress(Context{Mode: "smart", GroupTimestamps: true, Command: map[string]string{"composer": "composer install", "php-test": "vendor/bin/pest", "laravel": "php artisan test", "pytest": "pytest -v", "go-test": "go test -v", "vitest": "vitest run", "gradle": "gradle build"}[kind]}, s)
 			if a != b {
 				t.Fatal("nondeterminism")
 			}
@@ -103,7 +103,7 @@ func TestPHPDiagnosticBodies(t *testing.T) {
 	for _, diagnostic := range []string{"PHP Deprecated: old API", "PHP Notice: undefined variable", "WARN risky test", "Tests: 1 skipped", "⨯ handles payment", "× handles payment", "FAIL Tests\\Feature\\OrderTest", "SQLSTATE[HY000]: General error", "Stack trace:", "✘ charges a card", "⚠ uses an old API", "∅ handles payment", "↩ handles payment", "1 test triggered 1 deprecation:"} {
 		for _, kind := range []string{"composer", "php-test", "laravel"} {
 			s := diagnostic + "\n  ✓ successful-looking assertion text\n  PASS Tests\\Unit\\ExampleTest\n  - Downloading vendor/package (1.0.0)\n#0 /app/vendor/framework.php(42): handle()\n"
-			got := (Reducer{kind}).Compress(Context{Mode: "smart", Command: map[string]string{"composer": "composer install", "php-test": "vendor/bin/pest", "laravel": "php artisan test"}[kind]}, s).Output
+			got := (Reducer{kind}).Compress(Context{Mode: "smart", Command: map[string]string{"composer": "composer install", "php-test": "vendor/bin/pest", "laravel": "php artisan test", "pytest": "pytest -v", "go-test": "go test -v", "vitest": "vitest run", "gradle": "gradle build"}[kind]}, s).Output
 			if got != s {
 				t.Errorf("%s removed body for %q: %q", kind, diagnostic, got)
 			}

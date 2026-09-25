@@ -36,6 +36,10 @@ func (r Reducer) Compress(c Context, s string) Result {
 	}
 	if c.Mode == "smart" {
 		switch r.Kind {
+		case "pytest", "go-test", "vitest", "gradle":
+			if classifier.BuildReduction(c.Command) == r.Kind {
+				clean = reduceBuild(clean, r.Kind)
+			}
 		case "maven", "node-test":
 			clean = reduceSuccess(clean, r.Kind)
 		case "composer", "php-test", "laravel":

@@ -11,18 +11,23 @@ Smart mode adds conservative deterministic reducers:
 | Type | Reduction | Preservation |
 |---|---|---|
 | Maven | Consecutive recognized repository transfer messages | All diagnostics, reactor summaries, test counts and stack traces |
+| pytest | Verbose PASSED records with node IDs | Failures, captured output, skipped/xfail/xpass records and totals |
+| Go tests | Adjacent RUN/PASS pairs for the same test | Package results, test logs, failures, races and parallel interleaving |
+| Vitest | Recognized successful file records with test counts and duration | Failure trees, console output, skipped tests, totals and coverage |
+| Gradle | UP-TO-DATE, FROM-CACHE and NO-SOURCE task records | Executed tasks, skipped/failed tasks, compiler output and build summaries |
 | Node/Jest | Consecutive PASS suite records | Failure/assertion bodies, summaries and snapshots |
 | Composer | Recognized package downloads and archive extractions | Dependency summaries, scripts, conflicts and security warnings |
 | PHPUnit/Pest/Laravel tests | Indented PASS and ✓/✔ success records | Failure bodies, stack traces, test counts, durations and coverage |
 | Kubernetes | Adjacent identical messages differing only in RFC3339 timestamps | First/last timestamps, count, severity, warnings/errors |
 | Docker | Same as Kubernetes; identity participates in match | Separate containers remain separate |
 
-A diagnostic line ends specialized Maven/Node/PHP suppression for the rest of that
+A diagnostic line ends specialized success-record suppression for the rest of that
 stream, protecting multiline failures. Error and warning timestamp variants are
 not grouped. Stack frames are retained; no heuristic framework-frame omission is
-implemented. Vitest/Mocha formats without a recognized PASS pattern receive safe
-normalization only. Gradle, pytest, Go, Rust, Terraform and Ansible are classified
-but use generic rules; Terraform always stays safe.
+implemented. Unknown Vitest reporters and pytest progress formats use generic
+normalization. Mocha output without a recognized PASS pattern also uses generic
+rules. Rust, Terraform and Ansible are classified but use generic rules;
+Terraform always stays safe.
 
 Integrity checks retain recognized critical lines in order, including file:line,
 assertions, exceptions, warnings, security/race warnings and failure summaries.
@@ -71,3 +76,26 @@ and [Sail test commands](https://github.com/laravel/docs/blob/13.x/sail.md#runni
 
 See [PHP/Laravel coverage and measurements](../scenarios/php-coverage.md) for
 fixture provenance, benchmark results and the limits of parallel-output support.
+
+## pytest, Go, Vitest and Gradle
+
+Specialized reducers require a simple recognized command: `pytest`,
+`python -m pytest` (including versioned interpreters), `go test`, `gradle` /
+`gradlew`, direct `vitest`, `npx vitest`, `pnpm [exec] vitest`, `yarn [exec] vitest`
+or `bun [x] vitest`. Shell expressions, quoted commands, unknown wrappers and
+npm script bodies are not resolved. Such commands receive generic normalization
+for these reducers. The existing Jest PASS rule is unchanged.
+
+Configuration keys are `pytest`, `go_test`, `gradle` and **`node_test` for Vitest**.
+Vitest has its own classifier/metrics name (`vitest`), while sharing the existing
+Node configuration so disabling `node_test` still disables its compressor.
+
+Go only aggregates RUN/PASS pairs with matching names and no intervening output.
+It keeps `ok`/`FAIL` package lines and does not summarize benchmark or JSON event
+records. Parallel PAUSE/CONT stops specialized suppression. Gradle only summarizes
+explicit cached/up-to-date/no-source statuses, never bare task execution lines.
+pytest xfail/xpass and failure-section headings, Vitest console sections and
+Kotlin compiler `e:`/`w:` lines also stop suppression for the remainder of a stream.
+
+See [build/test coverage](../scenarios/build-coverage.md) for concrete formats,
+regression evidence, measurements and unsupported variants.
