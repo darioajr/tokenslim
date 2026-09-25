@@ -36,7 +36,7 @@ func (r Reducer) Compress(c Context, s string) Result {
 	}
 	if c.Mode == "smart" {
 		switch r.Kind {
-		case "pytest", "go-test", "vitest", "gradle":
+		case "pytest", "go-test", "vitest", "gradle", "rust-test", "playwright", "dotnet-test":
 			if classifier.BuildReduction(c.Command) == r.Kind {
 				clean = reduceBuild(clean, r.Kind)
 			}
@@ -203,6 +203,12 @@ func groupLogs(s string) string {
 // Intact checks normalized critical lines as an ordered subsequence. An adjacent
 // exact-repeat marker may account for repeated occurrences of the same line.
 func Intact(original, output string) bool {
+	return IntactFor("", original, output)
+}
+
+// IntactFor applies the normal guard, except for recognized Playwright success
+// records whose source locations identify successful tests rather than errors.
+func IntactFor(kind, original, output string) bool {
 	if original != "" && output == "" {
 		return false
 	}
@@ -214,7 +220,7 @@ func Intact(original, output string) bool {
 	cursor := 0
 	prev := ""
 	for _, line := range strings.Split(Sanitize(original), "\n") {
-		if !Critical(line) {
+		if !Critical(line) || kind == "playwright" && playwrightSuccess(line) {
 			prev = ""
 			continue
 		}

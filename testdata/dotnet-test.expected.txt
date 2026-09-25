@@ -1,0 +1,13 @@
+Test run for /workspace/Sample.Tests.dll (.NETCoreApp,Version=v8.0)
+A total of 1 test files matched the specified pattern.
+Starting test execution, please wait...
+[TokenSlim: 2 passed tests omitted]
+  Failed Sample.Tests.Update [2 ms]
+  Error Message:
+   Assert.Equal() Failure: Values differ
+Expected: 2
+Actual:   1
+  Stack Trace:
+     at Sample.Tests.Update() in /workspace/Tests.cs:line 12
+  Passed Sample.Tests.Payload [1 ms]
+Failed!  - Failed: 1, Passed: 2, Skipped: 0, Total: 3, Duration: 4 ms - Sample.Tests.dll (net8.0)

@@ -12,6 +12,7 @@ import tempfile
 
 from php import cases as php_cases
 from builds import cases as build_cases
+from extended_builds import cases as extended_cases
 
 ROOT = Path(__file__).resolve().parents[1]
 BINARY = ROOT / 'bin' / ('tokenslim.exe' if os.name == 'nt' else 'tokenslim')
@@ -51,7 +52,7 @@ def cases():
                    ''.join(f'\x1b[32mProcessando conexão {g}: ação concluída ✓\x1b[0m  \n'*8 + f'Lote {g} preservado\n' for g in range(50))+'ERROR conexão indisponível app.go:41\n',
                    ['ERROR conexão indisponível app.go:41']))
     result.append(('unique', 'build', ''.join(f'Unique event {i}: no repeated content, retain every observation\n' for i in range(100)), ['Unique event 99']))
-    return result + php_cases() + build_cases()
+    return result + php_cases() + build_cases() + extended_cases()
 
 
 def run(args, data=None, env=None):
@@ -165,10 +166,11 @@ def main():
                     payload['tool_name'] = 'Read'
                     assert run(['hook', 'post-tool-use', '--agent', agent], json.dumps(payload), env) == ''
                 rows.append(dict(scenario=name, **benchmark))
-        control_cases = php_cases() + build_cases()
+        control_cases = php_cases() + build_cases() + extended_cases()
         for name, key in [('pest-success', 'php_test'), ('pytest-success', 'pytest'),
                           ('go-test-success', 'go_test'), ('vitest-success', 'node_test'),
-                          ('gradle-success', 'gradle')]:
+                          ('gradle-success', 'gradle'), ('rust-test-success', 'rust_test'),
+                          ('dotnet-test-success', 'dotnet_test'), ('playwright-success', 'playwright')]:
             check_controls(temp, work, env, next(c for c in control_cases if c[0] == name), key)
         assert hashlib.sha256(baseline_source.read_bytes()).hexdigest() == baseline
         stats = json.loads(run(['stats', '--json'], env=env))

@@ -67,7 +67,7 @@ func Default() Config {
 	c.Cache.MaxSizeMB = 1024
 	c.Tools = map[string]Toggle{"Bash": {true}, "Read": {}, "Edit": {}, "Write": {}}
 	c.Compressors = map[string]Compressor{}
-	for _, n := range []string{"generic", "json", "php", "php_test", "composer", "laravel", "maven", "gradle", "node_test", "pytest", "go_test", "rust_test", "kubernetes", "docker", "terraform", "ansible"} {
+	for _, n := range []string{"generic", "json", "php", "php_test", "composer", "laravel", "maven", "gradle", "node_test", "pytest", "go_test", "rust_test", "playwright", "dotnet_test", "dotnet_build", "kubernetes", "docker", "terraform", "ansible"} {
 		c.Compressors[n] = Compressor{Enabled: true, GroupRepeatedLines: true, GroupTimestampVariants: true, KeepWarningLines: true, KeepErrorLines: true}
 	}
 	c.Metrics.Enabled = true
@@ -204,6 +204,10 @@ func Key(name string) string {
 		return "docker"
 	case "go-test":
 		return "go_test"
+	case "dotnet-test":
+		return "dotnet_test"
+	case "dotnet-build":
+		return "dotnet_build"
 	case "rust-test":
 		return "rust_test"
 	}

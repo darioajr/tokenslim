@@ -22,6 +22,21 @@ func BuildReduction(command string) string {
 	switch executable {
 	case "pytest", "pytest.exe":
 		return "pytest"
+	case "cargo", "cargo.exe":
+		if len(args) > 1 && strings.HasPrefix(args[1], "+") {
+			args = append(args[:1], args[2:]...)
+		}
+		if len(args) > 1 && args[1] == "test" {
+			return "rust-test"
+		}
+	case "dotnet", "dotnet.exe":
+		if len(args) > 1 && args[1] == "test" {
+			return "dotnet-test"
+		}
+	case "playwright", "playwright.cmd":
+		if len(args) > 1 && args[1] == "test" {
+			return "playwright"
+		}
 	case "go", "go.exe":
 		if len(args) > 1 && args[1] == "test" {
 			return "go-test"
@@ -34,6 +49,9 @@ func BuildReduction(command string) string {
 		args = args[1:]
 		if len(args) > 0 && ((executable == "pnpm" || executable == "yarn") && args[0] == "exec" || executable == "bun" && args[0] == "x") {
 			args = args[1:]
+		}
+		if len(args) > 1 && args[0] == "playwright" && args[1] == "test" {
+			return "playwright"
 		}
 		if len(args) > 0 && args[0] == "vitest" {
 			return "vitest"

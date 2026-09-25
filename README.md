@@ -218,7 +218,8 @@ Both size thresholds must be met. Output without sufficient savings remains
 unchanged. Smart mode also reduces Maven transfer messages, PASS suite records,
 timestamped logs, Composer transfers, and PHPUnit/Pest/Laravel test success records.
 It also summarizes pytest PASSED records, Go RUN/PASS pairs, Vitest successful
-file records and Gradle cached/up-to-date/no-source tasks.
+file records, Gradle cached/up-to-date/no-source tasks, Playwright list successes,
+Cargo/libtest successes and .NET/VSTest passed-test records.
 PHP, Composer, PHPUnit/Pest, and Laravel Artisan/Sail commands are detected
 automatically. Terraform remains conservative. See the
 [compression rules](docs/compression-rules.md) and

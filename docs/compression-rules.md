@@ -11,6 +11,9 @@ Smart mode adds conservative deterministic reducers:
 | Type | Reduction | Preservation |
 |---|---|---|
 | Maven | Consecutive recognized repository transfer messages | All diagnostics, reactor summaries, test counts and stack traces |
+| Playwright | Complete successful list-reporter records | Failures, retries, skips, traces, attachments and final counts |
+| Rust/Cargo | libtest `test name ... ok` records | Compilation messages, ignored tests, panics, doctests and totals |
+| .NET/VSTest | Indented `Passed TestName [duration]` records | Run headers, failures, logs, skipped tests and totals |
 | pytest | Verbose PASSED records with node IDs | Failures, captured output, skipped/xfail/xpass records and totals |
 | Go tests | Adjacent RUN/PASS pairs for the same test | Package results, test logs, failures, races and parallel interleaving |
 | Vitest | Recognized successful file records with test counts and duration | Failure trees, console output, skipped tests, totals and coverage |
@@ -26,7 +29,7 @@ stream, protecting multiline failures. Error and warning timestamp variants are
 not grouped. Stack frames are retained; no heuristic framework-frame omission is
 implemented. Unknown Vitest reporters and pytest progress formats use generic
 normalization. Mocha output without a recognized PASS pattern also uses generic
-rules. Rust, Terraform and Ansible are classified but use generic rules;
+rules. Terraform and Ansible are classified but use generic rules;
 Terraform always stays safe.
 
 Integrity checks retain recognized critical lines in order, including file:line,
@@ -99,3 +102,31 @@ Kotlin compiler `e:`/`w:` lines also stop suppression for the remainder of a str
 
 See [build/test coverage](../scenarios/build-coverage.md) for concrete formats,
 regression evidence, measurements and unsupported variants.
+
+## Playwright, Cargo and .NET
+
+New configuration keys are `playwright`, `dotnet_test` and `dotnet_build`;
+Cargo tests use the existing `rust_test`. Supported simple invocations are
+`playwright test` and the same npx/pnpm/yarn/bun launchers as Vitest,
+`cargo [+toolchain] test`, and `dotnet test` (including `dotnet.exe`).
+`dotnet build` is classified separately and uses generic normalization only.
+Quoted shell expressions, compound commands and unknown wrappers do not enable
+these specialized rules. No npm scripts, Cargo aliases or .NET test-platform
+configuration files are resolved.
+
+Playwright recognizes list rows with a pass glyph, numeric test ordinal,
+optional project name, source location, title and duration. Only these complete
+success rows are exempt from the file:line integrity requirement for this
+compressor; diagnostic words and retry/flaky indicators still prevent omission.
+Failure rows, plain source locations and assertion bodies retain protection.
+Line/dot/JSON reporters and unknown list variants are not heuristically reduced.
+
+Cargo compilation output and documentation-test source locations remain visible;
+only recognized libtest success records are summarized. Ignored-test records stop
+suppression. .NET rules target English VSTest console success rows; MTP-specific,
+localized and unknown output is retained. Recognized run headers are preserved
+without stopping reduction, while test summaries, skipped tests and standard
+output/error message sections stop it. Build and restore messages are retained.
+
+See [stage-3 coverage](../scenarios/extended-build-coverage.md) for evidence,
+measurements and limitations.

@@ -74,3 +74,27 @@ func TestBuildCommands(t *testing.T) {
 		}
 	}
 }
+
+func TestExtendedBuildCommands(t *testing.T) {
+	for command, want := range map[string]string{
+		"cargo test --workspace": "rust-test", "cargo +stable test": "rust-test",
+		"dotnet test --no-build": "dotnet-test", "dotnet.exe test": "dotnet-test",
+		"npx playwright test --reporter=list": "playwright", "pnpm exec playwright test": "playwright",
+		"./node_modules/.bin/playwright test": "playwright",
+	} {
+		if got := BuildReduction(command); got != want {
+			t.Errorf("%s: %s", command, got)
+		}
+		if got := Detect(command, ""); got != want {
+			t.Errorf("detect %s: %s", command, got)
+		}
+	}
+	for _, command := range []string{"cargo build", "cargo nextest run", "dotnet build", "dotnet run", "playwright install", "npx playwright show-report", "cat cargo test", "dotnet test && cat log"} {
+		if got := BuildReduction(command); got != "" {
+			t.Errorf("unsafe scope %s: %s", command, got)
+		}
+	}
+	if Detect("dotnet build", "") != "dotnet-build" {
+		t.Fatal("missing build classification")
+	}
+}

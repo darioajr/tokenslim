@@ -95,7 +95,7 @@ func (e Engine) Process(q Request, dryRun bool) (r Result) {
 	ctx := compressor.Context{Command: q.Command, Mode: mode, GroupTimestamps: opt.GroupTimestampVariants, DisableRepeats: !opt.GroupRepeatedLines}
 	a := reducer.Compress(ctx, q.Stdout).Output
 	b := reducer.Compress(ctx, q.Stderr).Output
-	if !compressor.Intact(q.Stdout, a) || !compressor.Intact(q.Stderr, b) {
+	if !compressor.IntactFor(r.Metrics.Compressor, q.Stdout, a) || !compressor.IntactFor(r.Metrics.Compressor, q.Stderr, b) {
 		r.Metrics.Reason = "integrity guard"
 		return
 	}

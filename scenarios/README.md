@@ -21,7 +21,9 @@ and output without repetition. The [PHP/Laravel corpus](php-coverage.md) adds
 Composer install/update, PHPUnit, Pest, Artisan/Sail, failure/issue diagnostics,
 ANSI/CRLF, parallel-shaped output and non-test command controls. The
 [build/test corpus](build-coverage.md) adds pytest, Go, Vitest and Gradle success,
-failure, compound-command and diagnostic-first scenarios. Each case runs in `safe` and `smart` mode.
+failure, compound-command and diagnostic-first scenarios. The
+[stage-3 corpus](extended-build-coverage.md) adds Playwright, Cargo and .NET/VSTest
+with the same adapter and configuration checks. Each case runs in `safe` and `smart` mode.
 
 Checks cover byte savings including the recovery marker, consistent token
 estimates, preservation of selected diagnostics and exit codes, exact cache

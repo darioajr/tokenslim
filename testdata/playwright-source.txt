@@ -1,0 +1,4 @@
+const { test, expect } = require('@playwright/test');
+test('creates record', () => expect(1).toBe(1));
+test('reads record', () => expect(2).toBe(2));
+test('updates record', () => expect(1).toBe(2));

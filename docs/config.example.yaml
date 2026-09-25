@@ -18,6 +18,24 @@ tools:
     Write:
         enabled: false
 compressors:
+    playwright:
+        enabled: true
+        group_repeated_lines: true
+        group_timestamp_variants: true
+        keep_warning_lines: true
+        keep_error_lines: true
+    dotnet_test:
+        enabled: true
+        group_repeated_lines: true
+        group_timestamp_variants: true
+        keep_warning_lines: true
+        keep_error_lines: true
+    dotnet_build:
+        enabled: true
+        group_repeated_lines: true
+        group_timestamp_variants: true
+        keep_warning_lines: true
+        keep_error_lines: true
     composer:
         enabled: true
         group_repeated_lines: true
