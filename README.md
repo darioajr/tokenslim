@@ -183,6 +183,23 @@ dry run that writes neither cache entries nor metrics. The `optimize` command
 and hooks save the original output. Flags must precede the file name; `-` reads
 stdin. Token counts are local estimates.
 
+## Custom rules and reports
+
+Opt-in [custom aggregation rules](docs/custom-rules.md) summarize consecutive
+messages while preserving the first line, count and recoverable original.
+Only explicitly ignored named fields may differ; recognized diagnostics stay
+protected. Preview changes with `benchmark` and validate with `config validate`.
+
+```sh
+./bin/tokenslim config validate
+./bin/tokenslim report
+./bin/tokenslim report --format html > report.html
+```
+
+The [local report](docs/reports.md) shows savings by tool family, rule usage and
+processing outcomes. Its HTML view supports filtering and sorting without
+external services. Reports read metrics only; token counts remain estimates.
+
 ## Recover output through MCP
 
 The executable also provides a read-only MCP server:

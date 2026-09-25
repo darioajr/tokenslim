@@ -130,3 +130,13 @@ output/error message sections stop it. Build and restore messages are retained.
 
 See [stage-3 coverage](../scenarios/extended-build-coverage.md) for evidence,
 measurements and limitations.
+
+## User aggregation rules
+
+Smart mode can apply opt-in [custom rules](custom-rules.md) after specialized
+reducers and before exact-repeat grouping. Rules match complete lines and group
+only adjacent equal content, excluding explicitly named ignored captures. They
+preserve a first line and count, respect diagnostic boundaries and pass through
+the existing integrity, cache and reduction gates. Full valid JSON bypasses rules.
+Accepted rule counts are available in benchmark JSON, metrics and
+[reports](reports.md); rejected changes never contribute rule usage.

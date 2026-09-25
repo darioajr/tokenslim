@@ -18,6 +18,7 @@ import (
 	"tokenslim/internal/mcp"
 	"tokenslim/internal/metrics"
 	"tokenslim/internal/recovery"
+	"tokenslim/internal/report"
 )
 
 var version = "0.1.0"
@@ -35,7 +36,8 @@ func run(args []string, in io.Reader, out io.Writer) error {
 Commands:
   version | status
   stats [--session ID] [--json]
-  config show | path
+  config show | path | validate
+  report [--session ID] [--format text|json|html]
   optimize [--mode safe|smart|off] [--command COMMAND] FILE|-
   benchmark [--mode safe|smart|off] [--command COMMAND] [--json] FILE|-
   cache inspect REF [--metadata] | clear | prune
@@ -88,9 +90,28 @@ Benchmark is a dry run: no cache or metrics writes. Tokens are estimates.`)
 	case "status":
 		fmt.Fprintf(out, "TokenSlim %s\nMode: %s\nHome: %s\nCache: %t\nMetrics: %t\nClaude Code: PostToolUse / updatedToolOutput\nCodex: PostToolUse / continue:false + stopReason\nInstallation and hook trust must be configured in the host.\n", version, c.Mode, home, c.Cache.Enabled, c.Metrics.Enabled)
 		return nil
+	case "report":
+		fs := flag.NewFlagSet("report", flag.ContinueOnError)
+		session := fs.String("session", "", "session filter")
+		format := fs.String("format", "text", "text, json or html")
+		if err := fs.Parse(args[1:]); err != nil {
+			return err
+		}
+		if fs.NArg() != 0 {
+			return fmt.Errorf("usage: report [--session ID] [--format text|json|html]")
+		}
+		summary, err := metrics.Read(home, *session)
+		if err != nil {
+			return err
+		}
+		return report.Render(out, report.Build(summary, *session), *format)
 	case "config":
+		if len(args) == 2 && args[1] == "validate" {
+			fmt.Fprintln(out, "Configuration valid")
+			return nil
+		}
 		if len(args) != 2 || args[1] != "show" {
-			return fmt.Errorf("usage: config show|path")
+			return fmt.Errorf("usage: config show|path|validate")
 		}
 		b, e := yaml.Marshal(c)
 		if e == nil {

@@ -143,3 +143,7 @@ target:
     max_reduction_percent: 95
 token_estimate:
     characters_per_token: 4
+
+# Custom rules apply only in smart mode. Project lists replace global lists.
+# See custom-rules.md for named capture aggregation and preview examples.
+rules: []

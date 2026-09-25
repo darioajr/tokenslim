@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"tokenslim/internal/rules"
 
 	"go.yaml.in/yaml/v3"
 )
@@ -27,8 +28,9 @@ type Compressor struct {
 	KeepErrorLines         bool   `yaml:"keep_error_lines"`
 }
 type Config struct {
-	Version    int    `yaml:"version"`
-	Mode       string `yaml:"mode"`
+	Rules      []rules.Spec `yaml:"rules"`
+	Version    int          `yaml:"version"`
+	Mode       string       `yaml:"mode"`
 	Thresholds struct {
 		MinimumBytes     int     `yaml:"minimum_bytes"`
 		MinimumLines     int     `yaml:"minimum_lines"`
@@ -126,6 +128,9 @@ func (c Config) Validate() error {
 		if v.Mode != "" && v.Mode != "safe" && v.Mode != "smart" && v.Mode != "off" {
 			return fmt.Errorf("invalid mode for %s", n)
 		}
+	}
+	if _, e := rules.Compile(c.Rules); e != nil {
+		return e
 	}
 	_, e := Retention(c.Cache.Retention)
 	return e

@@ -12,6 +12,7 @@ import (
 	"tokenslim/internal/compressor"
 	"tokenslim/internal/config"
 	"tokenslim/internal/metrics"
+	"tokenslim/internal/rules"
 	"unicode/utf8"
 )
 
@@ -87,14 +88,24 @@ func (e Engine) Process(q Request, dryRun bool) (r Result) {
 	if r.Metrics.Compressor == "terraform" {
 		mode = "safe"
 	}
+	r.Metrics.Mode = mode
 	if mode == "off" {
+		r.Metrics.Reason = "compressor mode off"
 		return
 	}
-	r.Metrics.Mode = mode
 	reducer := compressor.Reducer{Kind: r.Metrics.Compressor}
 	ctx := compressor.Context{Command: q.Command, Mode: mode, GroupTimestamps: opt.GroupTimestampVariants, DisableRepeats: !opt.GroupRepeatedLines}
-	a := reducer.Compress(ctx, q.Stdout).Output
-	b := reducer.Compress(ctx, q.Stderr).Output
+	if mode == "smart" {
+		var err error
+		ctx.Rules, err = rules.Compile(c.Rules)
+		if err != nil {
+			r.Metrics.Reason = "invalid custom rules"
+			return
+		}
+	}
+	ar := reducer.Compress(ctx, q.Stdout)
+	br := reducer.Compress(ctx, q.Stderr)
+	a, b := ar.Output, br.Output
 	if !compressor.IntactFor(r.Metrics.Compressor, q.Stdout, a) || !compressor.IntactFor(r.Metrics.Compressor, q.Stderr, b) {
 		r.Metrics.Reason = "integrity guard"
 		return
@@ -145,6 +156,15 @@ func (e Engine) Process(q Request, dryRun bool) (r Result) {
 	r.Stdout = a
 	r.Stderr = b
 	r.Ref = ref
+	r.Metrics.Rules = map[string]rules.Effect{}
+	for _, effects := range []map[string]rules.Effect{ar.Rules, br.Rules} {
+		for name, effect := range effects {
+			current := r.Metrics.Rules[name]
+			current.Groups += effect.Groups
+			current.Lines += effect.Lines
+			r.Metrics.Rules[name] = current
+		}
+	}
 	r.Metrics.Changed = true
 	r.Metrics.Reason = "compressed"
 	return

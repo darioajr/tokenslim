@@ -3,6 +3,7 @@ package compressor
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"tokenslim/internal/classifier"
@@ -84,7 +85,7 @@ func FuzzReducer(f *testing.F) {
 			r := Reducer{kind}
 			a := r.Compress(Context{Mode: "smart", GroupTimestamps: true, Command: map[string]string{"composer": "composer install", "php-test": "vendor/bin/pest", "laravel": "php artisan test", "pytest": "pytest -v", "go-test": "go test -v", "vitest": "vitest run", "gradle": "gradle build", "rust-test": "cargo test", "dotnet-test": "dotnet test", "playwright": "npx playwright test"}[kind]}, s)
 			b := r.Compress(Context{Mode: "smart", GroupTimestamps: true, Command: map[string]string{"composer": "composer install", "php-test": "vendor/bin/pest", "laravel": "php artisan test", "pytest": "pytest -v", "go-test": "go test -v", "vitest": "vitest run", "gradle": "gradle build", "rust-test": "cargo test", "dotnet-test": "dotnet test", "playwright": "npx playwright test"}[kind]}, s)
-			if a != b {
+			if !reflect.DeepEqual(a, b) {
 				t.Fatal("nondeterminism")
 			}
 			if !IntactFor(kind, s, a.Output) {

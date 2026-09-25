@@ -9,14 +9,17 @@ import (
 	"strings"
 	"time"
 	"tokenslim/internal/classifier"
+	"tokenslim/internal/rules"
 )
 
 type Context struct {
+	Rules           []rules.Rule
 	Command, Mode   string
 	GroupTimestamps bool
 	DisableRepeats  bool
 }
 type Result struct {
+	Rules  map[string]rules.Effect
 	Output string
 	Lossy  bool
 }
@@ -32,8 +35,9 @@ func (r Reducer) Compress(c Context, s string) Result {
 	var b bytes.Buffer
 	// Compact preserves numeric lexemes, duplicate keys and string escapes.
 	if json.Valid([]byte(clean)) && json.Compact(&b, []byte(clean)) == nil {
-		return Result{b.String(), b.String() != s}
+		return Result{Output: b.String(), Lossy: b.String() != s}
 	}
+	var effects map[string]rules.Effect
 	if c.Mode == "smart" {
 		switch r.Kind {
 		case "pytest", "go-test", "vitest", "gradle", "rust-test", "playwright", "dotnet-test":
@@ -52,13 +56,16 @@ func (r Reducer) Compress(c Context, s string) Result {
 			}
 		}
 	}
+	if c.Mode == "smart" {
+		clean, effects = aggregateRules(clean, c.Command, c.Rules)
+	}
 	if !c.DisableRepeats {
 		clean = Repeats(clean)
 	}
 	if clean == "" && s != "" {
-		return Result{s, false}
+		return Result{Output: s}
 	}
-	return Result{clean, clean != s}
+	return Result{Output: clean, Lossy: clean != s, Rules: effects}
 }
 
 var ansi = regexp.MustCompile("\x1b(?:\\[[0-?]*[ -/]*[@-~]|\\][^\x07\x1b]*(?:\x07|\x1b\\\\))")

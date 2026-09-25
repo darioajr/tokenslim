@@ -9,22 +9,24 @@ import (
 	"strings"
 	"time"
 	"tokenslim/internal/cache"
+	"tokenslim/internal/rules"
 )
 
 type Record struct {
-	SessionID                string    `json:"session_id,omitempty"`
-	Compressor               string    `json:"compressor"`
-	Mode                     string    `json:"mode"`
-	OriginalBytes            int       `json:"original_bytes"`
-	OptimizedBytes           int       `json:"optimized_bytes"`
-	OriginalLines            int       `json:"original_lines"`
-	OptimizedLines           int       `json:"optimized_lines"`
-	EstimatedOriginalTokens  int       `json:"estimated_original_tokens"`
-	EstimatedOptimizedTokens int       `json:"estimated_optimized_tokens"`
-	DurationNS               int64     `json:"duration_ns"`
-	Changed                  bool      `json:"changed"`
-	Reason                   string    `json:"reason"`
-	CreatedAt                time.Time `json:"created_at"`
+	Rules                    map[string]rules.Effect `json:"rules,omitempty"`
+	SessionID                string                  `json:"session_id,omitempty"`
+	Compressor               string                  `json:"compressor"`
+	Mode                     string                  `json:"mode"`
+	OriginalBytes            int                     `json:"original_bytes"`
+	OptimizedBytes           int                     `json:"optimized_bytes"`
+	OriginalLines            int                     `json:"original_lines"`
+	OptimizedLines           int                     `json:"optimized_lines"`
+	EstimatedOriginalTokens  int                     `json:"estimated_original_tokens"`
+	EstimatedOptimizedTokens int                     `json:"estimated_optimized_tokens"`
+	DurationNS               int64                   `json:"duration_ns"`
+	Changed                  bool                    `json:"changed"`
+	Reason                   string                  `json:"reason"`
+	CreatedAt                time.Time               `json:"created_at"`
 }
 
 func Write(home string, r Record) error {
@@ -60,7 +62,10 @@ type Total struct {
 	Processed, Changed, OriginalBytes, OptimizedBytes, EstimatedOriginalTokens, EstimatedOptimizedTokens int
 	DurationNS                                                                                           int64
 }
+type RuleTotal struct{ Records, Groups, Lines int }
 type Summary struct {
+	ByRule       map[string]RuleTotal
+	ByReason     map[string]int
 	Total        Total
 	ByCompressor map[string]Total
 }
@@ -77,7 +82,7 @@ func (t *Total) add(r Record) {
 	t.DurationNS += r.DurationNS
 }
 func Read(home, session string) (Summary, error) {
-	s := Summary{ByCompressor: map[string]Total{}}
+	s := Summary{ByCompressor: map[string]Total{}, ByRule: map[string]RuleTotal{}, ByReason: map[string]int{}}
 	dir := filepath.Join(home, "metrics")
 	entries, e := os.ReadDir(dir)
 	if os.IsNotExist(e) {
@@ -102,6 +107,20 @@ func Read(home, session string) (Summary, error) {
 			continue
 		}
 		s.Total.add(r)
+		reason := r.Reason
+		if reason == "" {
+			reason = "unspecified"
+		}
+		s.ByReason[reason]++
+		if r.Changed {
+			for name, effect := range r.Rules {
+				total := s.ByRule[name]
+				total.Records++
+				total.Groups += effect.Groups
+				total.Lines += effect.Lines
+				s.ByRule[name] = total
+			}
+		}
 		t := s.ByCompressor[r.Compressor]
 		t.add(r)
 		s.ByCompressor[r.Compressor] = t
