@@ -150,9 +150,12 @@ func streams(format string) []string {
 }
 func selectText(raw []byte, format, stream string) (string, string, error) {
 	if stream == "auto" {
-		stream = streams(format)[len(streams(format))-1]
-		if format == "claude-bash-json" {
+		stream = "raw"
+		switch format {
+		case "claude-bash-json":
 			stream = "stdout"
+		case "codex-tool-json":
+			stream = "output"
 		}
 	}
 	if stream == "raw" {

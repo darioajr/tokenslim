@@ -166,7 +166,14 @@ func Serve(in io.Reader, out io.Writer, service recovery.Service, version string
 			}
 		}
 		id := q.ID
-		if len(id) == 0 || failure != nil && failure.Code == -32600 {
+		var parsedID any
+		validID := json.Unmarshal(id, &parsedID) == nil
+		switch parsedID.(type) {
+		case string, float64:
+		default:
+			validID = false
+		}
+		if !validID {
 			id = json.RawMessage("null")
 		}
 		if failure != nil && failure.Code == -32700 {
@@ -211,6 +218,23 @@ func call(service recovery.Service, raw json.RawMessage) (any, *rpcError) {
 			return nil, &rpcError{-32602, "Unknown or null argument: " + key}
 		}
 		definition := prop.(map[string]any)
+		if definition["type"] == "string" {
+			var valueString string
+			if json.Unmarshal(value, &valueString) != nil {
+				return nil, &rpcError{-32602, "Expected string: " + key}
+			}
+			if values, ok := definition["enum"].([]string); ok {
+				found := false
+				for _, v := range values {
+					if valueString == v {
+						found = true
+					}
+				}
+				if !found {
+					return nil, &rpcError{-32602, "Invalid stream"}
+				}
+			}
+		}
 		if definition["type"] == "integer" {
 			var n int
 			if json.Unmarshal(value, &n) != nil {

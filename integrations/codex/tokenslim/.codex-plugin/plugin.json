@@ -1,8 +1,10 @@
 {
   "name": "tokenslim",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Local compression of verbose tool output, with original-output recovery",
-  "author": {"name": "TokenSlim contributors"},
+  "author": {
+    "name": "TokenSlim contributors"
+  },
   "skills": "./skills/",
   "interface": {
     "displayName": "TokenSlim",

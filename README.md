@@ -183,6 +183,20 @@ dry run that writes neither cache entries nor metrics. The `optimize` command
 and hooks save the original output. Flags must precede the file name; `-` reads
 stdin. Token counts are local estimates.
 
+## Recover output through MCP
+
+The executable also provides a read-only MCP server:
+
+```sh
+./bin/tokenslim mcp serve
+```
+
+Configure your MCP client to launch that command with the same `TOKENSLIM_HOME`
+as the hooks. It exposes metadata, paginated originals, line ranges and literal
+search, preserving the cached text. See [MCP recovery](docs/mcp.md) for setup,
+stream selection, limits and validation. Registration is optional; the existing
+`cache inspect` CLI remains available.
+
 ## Update
 
 Download and verify the new release package for the same agent and platform.

@@ -42,3 +42,21 @@ func TestCLIErrors(t *testing.T) {
 		t.Fatal("hook did not fail open")
 	}
 }
+
+func TestMCPCLI(t *testing.T) {
+	home := filepath.Join(t.TempDir(), "absent")
+	t.Setenv("TOKENSLIM_HOME", home)
+	var out bytes.Buffer
+	if err := run([]string{"mcp", "serve"}, strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"ping"}`+"\n"), &out); err != nil {
+		t.Fatal(err)
+	}
+	if !json.Valid(out.Bytes()) || !strings.Contains(out.String(), `"result":{}`) {
+		t.Fatal(out.String())
+	}
+	if _, err := os.Stat(home); !os.IsNotExist(err) {
+		t.Fatal("MCP wrote state on startup")
+	}
+	if err := run([]string{"mcp"}, strings.NewReader(""), &out); err == nil {
+		t.Fatal("accepted invalid command")
+	}
+}

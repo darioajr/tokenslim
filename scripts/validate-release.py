@@ -51,7 +51,7 @@ def validate(tag=None, packages=False):
             binary = 'bin/tokenslim.exe' if windows else 'bin/tokenslim'
             required = {binary, f'.{agent}-plugin/plugin.json', 'hooks/hooks.json',
                         'skills/tokenslim/SKILL.md', 'README.md', 'LICENSE', 'VERSION',
-                        'docs/ci-cd.md', 'scripts/codex-hook-config.py'}
+                        'docs/ci-cd.md', 'docs/mcp.md', 'scripts/codex-hook-config.py'}
             members = {}
             modes = {}
             if windows:

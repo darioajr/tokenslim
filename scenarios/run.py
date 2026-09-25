@@ -13,6 +13,7 @@ import tempfile
 from php import cases as php_cases
 from builds import cases as build_cases
 from extended_builds import cases as extended_cases
+from recovery_check import check as check_recovery
 
 ROOT = Path(__file__).resolve().parents[1]
 BINARY = ROOT / 'bin' / ('tokenslim.exe' if os.name == 'nt' else 'tokenslim')
@@ -193,6 +194,7 @@ def main():
     (results/'report.json').write_text(json.dumps(rows, indent=2)+'\n')
     print('\n'.join(report))
     print(f'Report: {results / "report.md"}')
+    check_recovery(BINARY)
 
 
 if __name__ == '__main__':

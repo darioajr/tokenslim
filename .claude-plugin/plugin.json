@@ -1,6 +1,6 @@
 {
   "name": "tokenslim",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Local tool-output compression with diagnostic preservation and recoverable originals",
   "license": "Apache-2.0",
   "author": {

@@ -14,6 +14,8 @@ logs it simulates.
 - `generated/`: reproducible input logs containing no private data.
 - `results/`: optimized outputs, hook responses, and Markdown/JSON reports.
 - `run.py`: generation, measurement, and automated checks.
+- `recovery_check.py`: real MCP subprocess checks for originals, ranges and search
+  from CLI, Claude and Codex cache entries, including a no-writes assertion.
 
 Scenarios cover Maven failures, Node tests with assertions, timestamped Kubernetes
 logs, Docker service identity, generic repetition, Unicode/ANSI, small output,

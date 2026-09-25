@@ -63,3 +63,14 @@ cache failures preserve the original result.
 - [Claude Code hooks](https://code.claude.com/docs/en/hooks#posttooluse-decision-control)
 - [Codex hooks and code-mode semantics](https://learn.chatgpt.com/docs/hooks)
 - [Codex skills](https://learn.chatgpt.com/docs/build-skills)
+
+## MCP recovery
+
+`MCP stdio → recovery service → verified cache read → bounded text result`
+
+The same executable serves four read-only tools through `tokenslim mcp serve`.
+The recovery service selects raw cached text or decoded adapter streams without
+normalizing content. Original byte pages and line/search results are bounded;
+reads verify the complete entry before returning selected content. The MCP path
+writes no cache entries, metrics or configuration and starts no network listener.
+See [MCP recovery](mcp.md) for the supported protocol subset and limits.
