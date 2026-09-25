@@ -1,0 +1,10 @@
+Installing dependencies from lock file
+Package operations: 2 installs, 0 updates, 0 removals
+  - Downloading vendor/one (1.0.0)
+  - Downloading vendor/two (2.0.0)
+  - Installing vendor/one (1.0.0): Extracting archive
+  - Installing vendor/two (2.0.0): Extracting archive
+Generating optimized autoload files
+> @php artisan package:discover --ansi
+Warning: Package vendor/old is abandoned
+  - Downloading vendor/three (3.0.0)

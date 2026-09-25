@@ -67,7 +67,7 @@ func Default() Config {
 	c.Cache.MaxSizeMB = 1024
 	c.Tools = map[string]Toggle{"Bash": {true}, "Read": {}, "Edit": {}, "Write": {}}
 	c.Compressors = map[string]Compressor{}
-	for _, n := range []string{"generic", "json", "maven", "gradle", "node_test", "pytest", "go_test", "rust_test", "kubernetes", "docker", "terraform", "ansible"} {
+	for _, n := range []string{"generic", "json", "php", "php_test", "composer", "laravel", "maven", "gradle", "node_test", "pytest", "go_test", "rust_test", "kubernetes", "docker", "terraform", "ansible"} {
 		c.Compressors[n] = Compressor{Enabled: true, GroupRepeatedLines: true, GroupTimestampVariants: true, KeepWarningLines: true, KeepErrorLines: true}
 	}
 	c.Metrics.Enabled = true
@@ -194,6 +194,8 @@ func merge(dst, src *yaml.Node) {
 }
 func Key(name string) string {
 	switch name {
+	case "php-test":
+		return "php_test"
 	case "node-test":
 		return "node_test"
 	case "kubernetes-log":

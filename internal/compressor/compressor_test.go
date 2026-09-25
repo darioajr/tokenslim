@@ -8,7 +8,7 @@ import (
 )
 
 func TestGolden(t *testing.T) {
-	cases := []struct{ name, kind, mode string }{{"generic", "generic", "safe"}, {"maven", "maven", "smart"}, {"node", "node-test", "smart"}, {"kubernetes", "kubernetes-log", "smart"}, {"docker", "docker-log", "smart"}, {"json", "generic", "safe"}}
+	cases := []struct{ name, kind, mode string }{{"generic", "generic", "safe"}, {"maven", "maven", "smart"}, {"node", "node-test", "smart"}, {"kubernetes", "kubernetes-log", "smart"}, {"docker", "docker-log", "smart"}, {"json", "generic", "safe"}, {"composer", "composer", "smart"}, {"php-test", "php-test", "smart"}, {"php-test", "laravel", "smart"}}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			a, e := os.ReadFile(filepath.Join("../../testdata", c.name+".input.txt"))
@@ -76,7 +76,7 @@ func FuzzReducer(f *testing.F) {
 		if len(s) > 1<<20 {
 			t.Skip()
 		}
-		for _, kind := range []string{"generic", "maven", "node-test", "kubernetes-log", "docker-log"} {
+		for _, kind := range []string{"generic", "maven", "node-test", "kubernetes-log", "docker-log", "php", "composer", "php-test", "laravel"} {
 			r := Reducer{kind}
 			a := r.Compress(Context{Mode: "smart", GroupTimestamps: true}, s)
 			b := r.Compress(Context{Mode: "smart", GroupTimestamps: true}, s)
@@ -95,5 +95,26 @@ func BenchmarkReducer(b *testing.B) {
 	b.ReportAllocs()
 	for b.Loop() {
 		(Reducer{"generic"}).Compress(Context{Mode: "safe"}, s)
+	}
+}
+
+func TestPHPDiagnosticBodies(t *testing.T) {
+	for _, diagnostic := range []string{"PHP Deprecated: old API", "PHP Notice: undefined variable", "WARN risky test", "Tests: 1 skipped", "⨯ handles payment", "× handles payment", "FAIL Tests\\Feature\\OrderTest", "SQLSTATE[HY000]: General error", "Stack trace:"} {
+		for _, kind := range []string{"composer", "php-test", "laravel"} {
+			s := diagnostic + "\n  ✓ successful-looking assertion text\n  PASS Tests\\Unit\\ExampleTest\n  - Downloading vendor/package (1.0.0)\n#0 /app/vendor/framework.php(42): handle()\n"
+			got := (Reducer{kind}).Compress(Context{Mode: "smart"}, s).Output
+			if got != s {
+				t.Errorf("%s removed body for %q: %q", kind, diagnostic, got)
+			}
+		}
+	}
+}
+
+func TestPHPSafeMode(t *testing.T) {
+	s := "  ✓ works\n  PASS Tests\\Unit\\ExampleTest\n  - Downloading vendor/package (1.0.0)\n"
+	for _, kind := range []string{"php", "composer", "php-test", "laravel"} {
+		if got := (Reducer{kind}).Compress(Context{Mode: "safe"}, s).Output; got != s {
+			t.Errorf("%s: %q", kind, got)
+		}
 	}
 }

@@ -9,6 +9,11 @@ var patterns = []struct {
 	name string
 	re   *regexp.Regexp
 }{
+	// Match specific PHP entry points before the interpreter or Composer wrappers.
+	{"laravel", regexp.MustCompile(`(^|[\s;&|/\\])(artisan|sail)(\s|$)`)},
+	{"php-test", regexp.MustCompile(`(^|[\s;&|/\\])(phpunit|pest)(\.phar|\.bat)?(\s|$)`)},
+	{"composer", regexp.MustCompile(`(^|[\s;&|/\\])composer(\.phar|\.bat)?(\s|$)`)},
+	{"php", regexp.MustCompile(`(^|[\s;&|/\\])php([0-9]+(\.[0-9]+)*)?(\.exe)?(\s|$)`)},
 	{"maven", regexp.MustCompile(`(^|[\s;&|/])(mvn|mvnw)(\s|$)`)},
 	{"gradle", regexp.MustCompile(`(^|[\s;&|/])(gradle|gradlew)(\s|$)`)},
 	{"node-test", regexp.MustCompile(`(^|[\s;&|/])((npm|pnpm|yarn)\s+(run\s+)?test|jest|vitest|mocha)(\s|$)`)},

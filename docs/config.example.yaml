@@ -18,6 +18,30 @@ tools:
     Write:
         enabled: false
 compressors:
+    composer:
+        enabled: true
+        group_repeated_lines: true
+        group_timestamp_variants: true
+        keep_warning_lines: true
+        keep_error_lines: true
+    laravel:
+        enabled: true
+        group_repeated_lines: true
+        group_timestamp_variants: true
+        keep_warning_lines: true
+        keep_error_lines: true
+    php:
+        enabled: true
+        group_repeated_lines: true
+        group_timestamp_variants: true
+        keep_warning_lines: true
+        keep_error_lines: true
+    php_test:
+        enabled: true
+        group_repeated_lines: true
+        group_timestamp_variants: true
+        keep_warning_lines: true
+        keep_error_lines: true
     ansible:
         enabled: true
         group_repeated_lines: true

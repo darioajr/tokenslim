@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"tokenslim/internal/cache"
 	"tokenslim/internal/config"
 )
 
@@ -102,5 +103,50 @@ func TestDebug(t *testing.T) {
 	b, e := os.ReadFile(filepath.Join(home, "logs", "tokenslim.log"))
 	if e != nil || !strings.Contains(string(b), "below thresholds") || strings.Contains(string(b), "private secret") {
 		t.Fatal(string(b), e)
+	}
+}
+
+func TestPHPPipeline(t *testing.T) {
+	for _, tc := range []struct{ command, kind, key, line string }{
+		{"composer install", "composer", "composer", "  - Installing vendor/package%d (1.0.0): Extracting archive\n"},
+		{"vendor/bin/phpunit --testdox", "php-test", "php_test", "  ✔ Successful test case number %d with a detailed description\n"},
+		{"vendor/bin/pest", "php-test", "php_test", "  ✓ Successful test case number %d with a detailed description\n"},
+		{"php artisan test", "laravel", "laravel", "  ✓ Successful test case number %d with a detailed description\n"},
+		{"vendor/bin/sail test", "laravel", "laravel", "  ✓ Successful test case number %d with a detailed description\n"},
+	} {
+		t.Run(tc.command, func(t *testing.T) {
+			c := config.Default()
+			c.Mode = "smart"
+			var b strings.Builder
+			for i := 0; i < 100; i++ {
+				fmt.Fprintf(&b, tc.line, i)
+			}
+			diagnostic := "PHP Fatal error: Uncaught RuntimeException in /app/Service.php:42\n"
+			for i := 0; i < 10; i++ {
+				diagnostic += fmt.Sprintf("#%d /app/vendor/framework/Container.php(%d): resolveDependency()\n", i, 100+i)
+			}
+			s := b.String() + diagnostic
+			home := t.TempDir()
+			r := (Engine{c, home}).Process(Request{Command: tc.command, Stdout: s, Stderr: "PHP Notice: environment diagnostic\n"}, false)
+			if !r.Metrics.Changed || r.Metrics.Compressor != tc.kind || !strings.Contains(r.Stdout, diagnostic) || r.Stderr != "PHP Notice: environment diagnostic\n" {
+				t.Fatalf("unexpected result: %+v", r)
+			}
+			raw, _, err := (cache.Store{Dir: filepath.Join(home, "cache")}).Get(r.Ref)
+			if err != nil || string(raw) != s+r.Stderr {
+				t.Fatalf("cache recovery: %v", err)
+			}
+			for _, mode := range []string{"safe", "off", "disabled"} {
+				opt := c.Compressors[tc.key]
+				opt.Enabled = mode != "disabled"
+				if mode != "disabled" {
+					opt.Mode = mode
+				}
+				c.Compressors[tc.key] = opt
+				got := (Engine{c, t.TempDir()}).Process(Request{Command: tc.command, Stdout: s}, true)
+				if got.Metrics.Changed || got.Stdout != s {
+					t.Fatalf("ignored %s override", mode)
+				}
+			}
+		})
 	}
 }

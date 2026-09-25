@@ -1,0 +1,11 @@
+   PASS  Tests\Unit\ExampleTest
+  ✓ it works 0.01s
+  ✓ it saves a model 0.02s
+   FAIL  Tests\Feature\PaymentTest
+  ⨯ it charges a card
+  Expected status code 200 but received 500.
+  at tests/Feature/PaymentTest.php:42
+  #0 /app/vendor/framework.php(31): handle()
+  ✓ this line is part of the diagnostic body
+  Tests: 1 failed, 2 passed (3 assertions)
+  Duration: 0.12s

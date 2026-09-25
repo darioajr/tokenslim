@@ -1,0 +1,7 @@
+Installing dependencies from lock file
+Package operations: 2 installs, 0 updates, 0 removals
+[TokenSlim: 4 dependency transfers omitted]
+Generating optimized autoload files
+> @php artisan package:discover --ansi
+Warning: Package vendor/old is abandoned
+  - Downloading vendor/three (3.0.0)

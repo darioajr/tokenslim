@@ -35,7 +35,7 @@ func (r Reducer) Compress(c Context, s string) Result {
 	}
 	if c.Mode == "smart" {
 		switch r.Kind {
-		case "maven", "node-test":
+		case "maven", "node-test", "composer", "php-test", "laravel":
 			clean = reduceSuccess(clean, r.Kind)
 		case "kubernetes-log", "docker-log":
 			if c.GroupTimestamps {
@@ -54,10 +54,13 @@ func (r Reducer) Compress(c Context, s string) Result {
 
 var ansi = regexp.MustCompile("\x1b(?:\\[[0-?]*[ -/]*[@-~]|\\][^\x07\x1b]*(?:\x07|\x1b\\\\))")
 var fileLine = regexp.MustCompile(`\.[a-z][a-z0-9]*:[0-9]+`)
-var diagnosticWords = []string{"error", "fatal", "fail", "warn", "panic", "exception", "caused by", "suppressed:", "assert", "expected", "actual", "received", "unreachable", "destroy", "replacement", "security", "vulnerab", "race", "snapshot", "coverage", "tests run", "test run", "test suites", "test files", "tests suites", "tests files", "build success", "build failure", "plan:", "play recap"}
+var diagnosticWords = []string{"deprecated", "notice", "risky", "incomplete", "skipped", "stack trace", "error", "fatal", "fail", "warn", "panic", "exception", "caused by", "suppressed:", "assert", "expected", "actual", "received", "unreachable", "destroy", "replacement", "security", "vulnerab", "race", "snapshot", "coverage", "tests run", "test run", "test suites", "test files", "tests suites", "tests files", "build success", "build failure", "plan:", "play recap"}
 
 func Critical(s string) bool {
 	lower := strings.ToLower(s)
+	if strings.HasPrefix(strings.TrimSpace(lower), "⨯") || strings.HasPrefix(strings.TrimSpace(lower), "×") {
+		return true
+	}
 	for _, word := range diagnosticWords {
 		if strings.Contains(lower, word) {
 			return true
@@ -105,6 +108,8 @@ func Repeats(s string) string {
 }
 
 var transfer = regexp.MustCompile(`^(?:\[INFO\] )?(?:Downloading|Downloaded) from [^:]+: https?://\S+(?: \([^\r\n]+\))?$`)
+var composerTransfer = regexp.MustCompile(`^\s*- (?:Downloading [a-z0-9_.-]+/[a-z0-9_.-]+ \([^\r\n]+\)|Installing [a-z0-9_.-]+/[a-z0-9_.-]+ \([^\r\n]+\): Extracting archive)$`)
+var phpPassed = regexp.MustCompile(`^\s+(?:PASS\s+\S+.*|[✓✔]\s+\S+.*)$`)
 var passed = regexp.MustCompile(`^\s*PASS\s+\S+.*$`)
 
 func reduceSuccess(s, kind string) string {
@@ -114,8 +119,13 @@ func reduceSuccess(s, kind string) string {
 	flush := func() {
 		if count > 0 {
 			label := "dependency transfers"
-			if kind == "node-test" {
+			switch kind {
+			case "node-test":
 				label = "passed suites"
+			case "composer":
+				label = "dependency transfers"
+			case "php-test", "laravel":
+				label = "passed test records"
 			}
 			out = append(out, fmt.Sprintf("[TokenSlim: %d %s omitted]", count, label))
 			count = 0
@@ -127,7 +137,10 @@ func reduceSuccess(s, kind string) string {
 		if Critical(l) {
 			diagnostic = true
 		}
-		noise := kind == "maven" && transfer.MatchString(l) || kind == "node-test" && passed.MatchString(l)
+		noise := kind == "maven" && transfer.MatchString(l) ||
+			kind == "node-test" && passed.MatchString(l) ||
+			kind == "composer" && composerTransfer.MatchString(l) ||
+			(kind == "php-test" || kind == "laravel") && phpPassed.MatchString(l)
 		if noise && !diagnostic {
 			count++
 			continue
