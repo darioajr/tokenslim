@@ -15,7 +15,9 @@ import (
 	"tokenslim/internal/config"
 	"tokenslim/internal/engine"
 	"tokenslim/internal/hook"
+	"tokenslim/internal/mcp"
 	"tokenslim/internal/metrics"
+	"tokenslim/internal/recovery"
 )
 
 var version = "0.1.0"
@@ -38,6 +40,7 @@ Commands:
   benchmark [--mode safe|smart|off] [--command COMMAND] [--json] FILE|-
   cache inspect REF [--metadata] | clear | prune
   hook post-tool-use [--agent claude|codex]
+  mcp serve
 
 Flags must precede the input file. TOKENSLIM_HOME overrides ~/.tokenslim.
 Benchmark is a dry run: no cache or metrics writes. Tokens are estimates.`)
@@ -77,6 +80,11 @@ Benchmark is a dry run: no cache or metrics writes. Tokens are estimates.`)
 		return e
 	}
 	switch args[0] {
+	case "mcp":
+		if len(args) != 2 || args[1] != "serve" {
+			return fmt.Errorf("usage: mcp serve")
+		}
+		return mcp.Serve(in, out, recovery.Service{Store: cache.Store{Dir: filepath.Join(home, "cache"), MaxBytes: int64(c.Limits.MaxInputMB) << 20}}, version)
 	case "status":
 		fmt.Fprintf(out, "TokenSlim %s\nMode: %s\nHome: %s\nCache: %t\nMetrics: %t\nClaude Code: PostToolUse / updatedToolOutput\nCodex: PostToolUse / continue:false + stopReason\nInstallation and hook trust must be configured in the host.\n", version, c.Mode, home, c.Cache.Enabled, c.Metrics.Enabled)
 		return nil
