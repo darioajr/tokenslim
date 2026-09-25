@@ -5,10 +5,11 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"tokenslim/internal/classifier"
 )
 
 func TestGolden(t *testing.T) {
-	cases := []struct{ name, kind, mode string }{{"generic", "generic", "safe"}, {"maven", "maven", "smart"}, {"node", "node-test", "smart"}, {"kubernetes", "kubernetes-log", "smart"}, {"docker", "docker-log", "smart"}, {"json", "generic", "safe"}, {"composer", "composer", "smart"}, {"php-test", "php-test", "smart"}, {"php-test", "laravel", "smart"}}
+	cases := []struct{ name, kind, mode string }{{"generic", "generic", "safe"}, {"maven", "maven", "smart"}, {"node", "node-test", "smart"}, {"kubernetes", "kubernetes-log", "smart"}, {"docker", "docker-log", "smart"}, {"json", "generic", "safe"}, {"composer", "composer", "smart"}, {"php-test", "php-test", "smart"}, {"php-test", "laravel", "smart"}, {"phpunit-testdox", "php-test", "smart"}, {"pest-upstream", "php-test", "smart"}}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			a, e := os.ReadFile(filepath.Join("../../testdata", c.name+".input.txt"))
@@ -19,13 +20,13 @@ func TestGolden(t *testing.T) {
 			if e != nil {
 				t.Fatal(e)
 			}
-			got := (Reducer{c.kind}).Compress(Context{Mode: c.mode, GroupTimestamps: true}, string(a)).Output
+			got := (Reducer{c.kind}).Compress(Context{Mode: c.mode, GroupTimestamps: true, Command: map[string]string{"composer": "composer install", "php-test": "vendor/bin/phpunit --testdox", "laravel": "php artisan test"}[c.kind]}, string(a)).Output
 			if got != string(want) {
 				t.Fatalf("got %q\nwant %q", got, want)
 			}
 			// Exercise Windows input line endings while keeping the golden output exact.
 			crlf := strings.ReplaceAll(string(a), "\n", "\r\n")
-			if actual := (Reducer{c.kind}).Compress(Context{Mode: c.mode, GroupTimestamps: true}, crlf).Output; actual != string(want) {
+			if actual := (Reducer{c.kind}).Compress(Context{Mode: c.mode, GroupTimestamps: true, Command: map[string]string{"composer": "composer install", "php-test": "vendor/bin/phpunit --testdox", "laravel": "php artisan test"}[c.kind]}, crlf).Output; actual != string(want) {
 				t.Fatalf("CRLF input: got %q, want %q", actual, want)
 			}
 			if !Intact(string(a), got) {
@@ -78,8 +79,8 @@ func FuzzReducer(f *testing.F) {
 		}
 		for _, kind := range []string{"generic", "maven", "node-test", "kubernetes-log", "docker-log", "php", "composer", "php-test", "laravel"} {
 			r := Reducer{kind}
-			a := r.Compress(Context{Mode: "smart", GroupTimestamps: true}, s)
-			b := r.Compress(Context{Mode: "smart", GroupTimestamps: true}, s)
+			a := r.Compress(Context{Mode: "smart", GroupTimestamps: true, Command: map[string]string{"composer": "composer install", "php-test": "vendor/bin/pest", "laravel": "php artisan test"}[kind]}, s)
+			b := r.Compress(Context{Mode: "smart", GroupTimestamps: true, Command: map[string]string{"composer": "composer install", "php-test": "vendor/bin/pest", "laravel": "php artisan test"}[kind]}, s)
 			if a != b {
 				t.Fatal("nondeterminism")
 			}
@@ -99,10 +100,10 @@ func BenchmarkReducer(b *testing.B) {
 }
 
 func TestPHPDiagnosticBodies(t *testing.T) {
-	for _, diagnostic := range []string{"PHP Deprecated: old API", "PHP Notice: undefined variable", "WARN risky test", "Tests: 1 skipped", "⨯ handles payment", "× handles payment", "FAIL Tests\\Feature\\OrderTest", "SQLSTATE[HY000]: General error", "Stack trace:"} {
+	for _, diagnostic := range []string{"PHP Deprecated: old API", "PHP Notice: undefined variable", "WARN risky test", "Tests: 1 skipped", "⨯ handles payment", "× handles payment", "FAIL Tests\\Feature\\OrderTest", "SQLSTATE[HY000]: General error", "Stack trace:", "✘ charges a card", "⚠ uses an old API", "∅ handles payment", "↩ handles payment", "1 test triggered 1 deprecation:"} {
 		for _, kind := range []string{"composer", "php-test", "laravel"} {
 			s := diagnostic + "\n  ✓ successful-looking assertion text\n  PASS Tests\\Unit\\ExampleTest\n  - Downloading vendor/package (1.0.0)\n#0 /app/vendor/framework.php(42): handle()\n"
-			got := (Reducer{kind}).Compress(Context{Mode: "smart"}, s).Output
+			got := (Reducer{kind}).Compress(Context{Mode: "smart", Command: map[string]string{"composer": "composer install", "php-test": "vendor/bin/pest", "laravel": "php artisan test"}[kind]}, s).Output
 			if got != s {
 				t.Errorf("%s removed body for %q: %q", kind, diagnostic, got)
 			}
@@ -116,5 +117,24 @@ func TestPHPSafeMode(t *testing.T) {
 		if got := (Reducer{kind}).Compress(Context{Mode: "safe"}, s).Output; got != s {
 			t.Errorf("%s: %q", kind, got)
 		}
+	}
+}
+
+func TestPHPCommandScope(t *testing.T) {
+	s := "  ✓ customer record was migrated\n  PASS customer record was verified\n  - Downloading vendor/package (1.0.0)\n"
+	for _, command := range []string{"php artisan migrate", "php artisan queue:work", "php artisan custom:report test", "sail artisan migrate", "php artisan --env test migrate", "cat vendor/bin/pest", "echo php artisan test", "php artisan test && php artisan migrate", "composer run-script install", "composer test", "composer show"} {
+		kind := classifier.Detect(command, s)
+		got := (Reducer{kind}).Compress(Context{Mode: "smart", Command: command}, s).Output
+		if got != s {
+			t.Errorf("%s changed non-test output: %q", command, got)
+		}
+	}
+}
+
+func TestComposerScriptBoundary(t *testing.T) {
+	s := "  - Downloading vendor/one (1.0.0)\n> @php artisan custom:report\n  - Downloading vendor/two (2.0.0)\n"
+	want := "[TokenSlim: 1 dependency transfers omitted]\n> @php artisan custom:report\n  - Downloading vendor/two (2.0.0)\n"
+	if got := (Reducer{"composer"}).Compress(Context{Mode: "smart", Command: "composer install"}, s).Output; got != want {
+		t.Fatalf("got %q", got)
 	}
 }

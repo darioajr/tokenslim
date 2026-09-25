@@ -42,13 +42,18 @@ keys: `php`, `composer`, `php_test`, `laravel`). Recognized entry points include
 versioned PHP interpreters, `composer` / `composer.phar`, `vendor/bin/phpunit`,
 `phpunit.phar`, `vendor/bin/pest`, `php artisan` and `vendor/bin/sail`. Specific
 entry points take precedence over interpreter wrappers. Composer script names are
-not resolved; for example, `composer test` uses the Composer rules.
+not resolved; `composer test` and `composer run-script test` use generic rules.
 
 Safe mode uses the same normalization and exact-repeat rules as other commands.
-Smart mode summarizes recognized Composer downloads/extractions and successful
-test records. PHPUnit dot progress and unrecognized formats remain unchanged
+Smart mode summarizes recognized downloads/extractions only for simple
+`composer install` / `composer update` invocations, and successful test records
+only for direct PHPUnit/Pest, `artisan test`, `sail test`, `sail artisan test`,
+`sail pest` or `sail phpunit` invocations. Interpreter wrappers with supported
+PHP switches are accepted. Quoted or compound shell commands and unknown
+wrappers use generic normalization; detecting a family alone does not authorize
+specialized suppression. Composer suppression stops at script output (`>`). PHPUnit dot progress and unrecognized formats remain unchanged
 apart from generic normalization. PHP scripts, lint results, Artisan migrations,
-queues and Laravel logs use generic rules when no recognized test records occur;
+queues, custom Artisan commands and Laravel logs always use generic rules;
 Laravel timestamps are not grouped. Deprecations, notices, risky/skipped/incomplete
 tests and failure markers stop specialized suppression for the rest of the stream.
 Migration records, SQL errors, stack frames and test summaries are retained.
@@ -63,3 +68,6 @@ tokenslim optimize --mode smart --command 'php artisan test' tests.log
 
 See the [Laravel test entry points](https://laravel.com/framework/docs/10.x/testing)
 and [Sail test commands](https://github.com/laravel/docs/blob/13.x/sail.md#running-tests).
+
+See [PHP/Laravel coverage and measurements](../scenarios/php-coverage.md) for
+fixture provenance, benchmark results and the limits of parallel-output support.

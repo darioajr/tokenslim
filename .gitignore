@@ -7,3 +7,4 @@
 coverage.out
 .DS_Store
 /.spec/
+__pycache__/

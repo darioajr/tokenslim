@@ -35,3 +35,21 @@ func TestPHPCommands(t *testing.T) {
 		}
 	}
 }
+
+func TestPHPReduction(t *testing.T) {
+	for _, command := range []string{"php artisan test", "php -d memory_limit=-1 artisan test --parallel", "php8.4 -n -c php.ini artisan --env=testing test", "./vendor/bin/sail test --parallel", "sail artisan test", "sail pest", "sail phpunit", "vendor/bin/phpunit --testdox", "php phpunit.phar", "vendor/bin/pest --parallel"} {
+		if got := PHPReduction(command); got != "php-test" {
+			t.Errorf("%s: %q", command, got)
+		}
+	}
+	for _, command := range []string{"composer install", "php composer.phar update", "composer --no-interaction update"} {
+		if got := PHPReduction(command); got != "composer" {
+			t.Errorf("%s: %q", command, got)
+		}
+	}
+	for _, command := range []string{"", "php", "php -d", "php -r code", "sail", "php artisan --env testing migrate", "php artisan custom:test", "composer run-script update", "cat vendor/bin/phpunit", "echo php artisan test", "php artisan test | tee tests.log", "composer install && composer audit"} {
+		if got := PHPReduction(command); got != "" {
+			t.Errorf("%s: %q", command, got)
+		}
+	}
+}

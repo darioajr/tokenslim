@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"tokenslim/internal/classifier"
 )
 
 type Context struct {
@@ -35,8 +36,12 @@ func (r Reducer) Compress(c Context, s string) Result {
 	}
 	if c.Mode == "smart" {
 		switch r.Kind {
-		case "maven", "node-test", "composer", "php-test", "laravel":
+		case "maven", "node-test":
 			clean = reduceSuccess(clean, r.Kind)
+		case "composer", "php-test", "laravel":
+			if kind := classifier.PHPReduction(c.Command); kind != "" {
+				clean = reduceSuccess(clean, kind)
+			}
 		case "kubernetes-log", "docker-log":
 			if c.GroupTimestamps {
 				clean = groupLogs(clean)
@@ -54,11 +59,11 @@ func (r Reducer) Compress(c Context, s string) Result {
 
 var ansi = regexp.MustCompile("\x1b(?:\\[[0-?]*[ -/]*[@-~]|\\][^\x07\x1b]*(?:\x07|\x1b\\\\))")
 var fileLine = regexp.MustCompile(`\.[a-z][a-z0-9]*:[0-9]+`)
-var diagnosticWords = []string{"deprecated", "notice", "risky", "incomplete", "skipped", "stack trace", "error", "fatal", "fail", "warn", "panic", "exception", "caused by", "suppressed:", "assert", "expected", "actual", "received", "unreachable", "destroy", "replacement", "security", "vulnerab", "race", "snapshot", "coverage", "tests run", "test run", "test suites", "test files", "tests suites", "tests files", "build success", "build failure", "plan:", "play recap"}
+var diagnosticWords = []string{"deprecat", "notice", "risky", "incomplete", "skipped", "stack trace", "error", "fatal", "fail", "warn", "panic", "exception", "caused by", "suppressed:", "assert", "expected", "actual", "received", "unreachable", "destroy", "replacement", "security", "vulnerab", "race", "snapshot", "coverage", "tests run", "test run", "test suites", "test files", "tests suites", "tests files", "build success", "build failure", "plan:", "play recap"}
 
 func Critical(s string) bool {
 	lower := strings.ToLower(s)
-	if strings.HasPrefix(strings.TrimSpace(lower), "⨯") || strings.HasPrefix(strings.TrimSpace(lower), "×") {
+	if strings.ContainsAny(strings.TrimSpace(lower), "⨯×✘⚠∅↩") {
 		return true
 	}
 	for _, word := range diagnosticWords {
@@ -109,7 +114,7 @@ func Repeats(s string) string {
 
 var transfer = regexp.MustCompile(`^(?:\[INFO\] )?(?:Downloading|Downloaded) from [^:]+: https?://\S+(?: \([^\r\n]+\))?$`)
 var composerTransfer = regexp.MustCompile(`^\s*- (?:Downloading [a-z0-9_.-]+/[a-z0-9_.-]+ \([^\r\n]+\)|Installing [a-z0-9_.-]+/[a-z0-9_.-]+ \([^\r\n]+\): Extracting archive)$`)
-var phpPassed = regexp.MustCompile(`^\s+(?:PASS\s+\S+.*|[✓✔]\s+\S+.*)$`)
+var phpPassed = regexp.MustCompile(`^[ \t]+(?:PASS\s+\S+.*|[✓✔]\s+\S+.*)$`)
 var passed = regexp.MustCompile(`^\s*PASS\s+\S+.*$`)
 
 func reduceSuccess(s, kind string) string {
@@ -134,7 +139,7 @@ func reduceSuccess(s, kind string) string {
 	// After a diagnostic starts, preserve its complete body, even lines that look like noise.
 	diagnostic := false
 	for _, l := range lines {
-		if Critical(l) {
+		if Critical(l) || kind == "composer" && strings.HasPrefix(strings.TrimSpace(l), ">") {
 			diagnostic = true
 		}
 		noise := kind == "maven" && transfer.MatchString(l) ||

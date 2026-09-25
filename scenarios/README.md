@@ -17,11 +17,16 @@ logs it simulates.
 
 Scenarios cover Maven failures, Node tests with assertions, timestamped Kubernetes
 logs, Docker service identity, generic repetition, Unicode/ANSI, small output,
-and output without repetition. Each case runs in `safe` and `smart` mode.
+and output without repetition. The [PHP/Laravel corpus](php-coverage.md) adds
+Composer install/update, PHPUnit, Pest, Artisan/Sail, failure/issue diagnostics,
+ANSI/CRLF, parallel-shaped output and non-test command controls. Each case runs in `safe` and `smart` mode.
 
 Checks cover byte savings including the recovery marker, consistent token
 estimates, preservation of selected diagnostics and exit codes, exact cache
-recovery, determinism, unchanged Read output, and untouched source files. The demo
+recovery (including original ANSI/CRLF bytes and hook JSON), determinism, stdout
+and stderr handling, execution metadata, unchanged Read output, and untouched
+source files. PHP checks also cover mode/compressor overrides, thresholds,
+reduction budgets and disabled cache. The demo
 cache uses an isolated temporary directory that is removed when the run finishes.
 Reports remain available in `results/`.
 
